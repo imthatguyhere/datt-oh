@@ -1,0 +1,38 @@
+{
+  "app": {
+    "title": "datt-oh — Datto RMM Agent Installer",
+    "theme": "warpburple"
+  },
+  "installer": {
+    "platform": "concord",
+    "downloadUrlTemplate": "https://{{platform}}.rmm.datto.com/download-agent/windows/{{siteUid}}",
+    "defaultSavePath": "C:\\ProgramData\\datt-oh\\DattoAgent\\AgentSetup.exe",
+    "defaultMode": "ui",
+    "silentArgs": [],
+    "successExitCodes": [0, 3010]
+  },
+  "defaults": {
+    "siteId": "77FORT"
+  },
+  "sites": [
+    {
+      "id": "77FORT",
+      "shortName": "77FORT",
+      "displayName": "Fortress Security",
+      "siteUid": "00000000-0000-0000-0000-000000000001"
+    },
+    {
+      "id": "12MAIN",
+      "shortName": "12MAIN",
+      "displayName": "Main Street Motors",
+      "siteUid": "00000000-0000-0000-0000-000000000002"
+    },
+    {
+      "id": "45WEST",
+      "shortName": "45WEST",
+      "displayName": "Westside Clinic",
+      "siteUid": "00000000-0000-0000-0000-000000000003"
+    }
+  ],
+  "arguments": []
+}

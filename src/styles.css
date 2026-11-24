@@ -1,0 +1,80 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: false;
+}
+@plugin "daisyui/theme" {
+  name: "warpburple";
+  default: true;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: oklch(15% 0.02 281);
+  --color-base-200: oklch(19% 0.03 281);
+  --color-base-300: oklch(23% 0.035 281);
+  --color-base-content: oklch(90% 0.02 281);
+  --color-primary: oklch(54% 0.24 293);
+  --color-primary-content: oklch(97% 0.01 293);
+  --color-secondary: oklch(55% 0.2 260);
+  --color-secondary-content: oklch(97% 0.01 260);
+  --color-accent: oklch(84% 0.16 190);
+  --color-accent-content: oklch(18% 0.04 190);
+  --color-neutral: oklch(22% 0.03 281);
+  --color-neutral-content: oklch(90% 0.02 281);
+  --color-info: oklch(72% 0.15 222);
+  --color-info-content: oklch(18% 0.04 222);
+  --color-success: oklch(72% 0.18 152);
+  --color-success-content: oklch(18% 0.04 152);
+  --color-warning: oklch(82% 0.17 88);
+  --color-warning-content: oklch(18% 0.05 88);
+  --color-error: oklch(62% 0.23 20);
+  --color-error-content: oklch(97% 0.01 20);
+  --radius-selector: 1rem;
+  --radius-field: 0.5rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(124, 58, 237, 0.18), transparent 60%),
+    radial-gradient(1000px 500px at 100% 110%, rgba(34, 211, 238, 0.12), transparent 60%),
+    var(--color-base-100);
+  color: var(--color-base-content);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Glassy panel with subtle neon glow */
+.glow-panel {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(124, 58, 237, 0.25);
+  box-shadow:
+    0 0 24px rgba(124, 58, 237, 0.12),
+    inset 0 0 32px rgba(88, 101, 242, 0.06);
+  backdrop-filter: blur(12px);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(124, 58, 237, 0.4);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 58, 237, 0.6);
+}
