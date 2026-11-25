@@ -42,13 +42,10 @@ interface InstallerContextValue {
   config: AppConfig | null;
   error: string | null;
   selectedSite: SiteConfig | null;
-  selectedArguments: string[];
   plan: InstallPlan | null;
   result: InstallResult | null;
   logs: LogEntry[];
   selectSite: (id: string) => void;
-  toggleArgument: (id: string) => void;
-  resetArguments: () => void;
   install: () => Promise<void>;
   reset: () => void;
 }
@@ -61,7 +58,6 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
-  const [selectedArguments, setSelectedArguments] = useState<string[]>([]);
   const [plan, setPlan] = useState<InstallPlan | null>(null);
   const [result, setResult] = useState<InstallResult | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -84,10 +80,11 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
 
     async function init() {
       try {
-        addLog("info", "Starting datt-oh...");
         const ctx = await api.getStartupContext();
         if (cancelled) return;
         setStartup(ctx);
+        //=-- Logged after the cancel check so StrictMode's dev double-mount only logs once.
+        addLog("info", "Starting datt-oh...");
         addLog("info", `Mode: ${ctx.mode}`);
 
         if (!ctx.configSource) {
@@ -106,11 +103,6 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
 
         const defaultId = cfg.defaults?.siteId ?? cfg.sites[0]?.id ?? null;
         setSelectedSiteId(defaultId);
-        setSelectedArguments(
-          (cfg.arguments ?? [])
-            .filter((arg) => arg.defaultChecked)
-            .map((arg) => arg.id),
-        );
 
         addLog("success", `Loaded config with ${cfg.sites.length} site(s)`);
         setPhase("ready");
@@ -142,18 +134,6 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
     setPhase((prev) => (prev === "failed" ? "ready" : prev));
   }, []);
 
-  const toggleArgument = useCallback((id: string) => {
-    setSelectedArguments((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  }, []);
-
-  const resetArguments = useCallback(() => {
-    setSelectedArguments(
-      (config?.arguments ?? []).filter((arg) => arg.defaultChecked).map((arg) => arg.id),
-    );
-  }, [config]);
-
   const install = useCallback(async () => {
     if (!selectedSiteId) {
       const msg = "Please select a site first.";
@@ -171,13 +151,11 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
       //=-- 1. Build and validate the plan on the backend (before any download).
       const p = await api.buildInstallPlan({
         siteId: selectedSiteId,
-        selectedArguments,
-      });
+        });
       setPlan(p);
       addLog("info", `Site UID: ${p.selectedSite.siteUid}`);
       addLog("info", `Installer URL: ${p.installerUrl}`);
       addLog("info", `Save path: ${p.savePath}`);
-      addLog("info", `Installer args: ${p.installerArgs.join(" ")}`);
 
       //=-- 2. Download.
       setPhase("downloading");
@@ -211,7 +189,7 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
       setError(msg);
       setPhase("failed");
     }
-  }, [selectedSiteId, selectedArguments, config, addLog]);
+  }, [selectedSiteId, config, addLog]);
 
   const reset = useCallback(() => {
     setPhase("ready");
@@ -227,13 +205,10 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
       config,
       error,
       selectedSite,
-      selectedArguments,
       plan,
       result,
       logs,
       selectSite,
-      toggleArgument,
-      resetArguments,
       install,
       reset,
     }),
@@ -243,13 +218,10 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
       config,
       error,
       selectedSite,
-      selectedArguments,
       plan,
       result,
       logs,
       selectSite,
-      toggleArgument,
-      resetArguments,
       install,
       reset,
     ],
