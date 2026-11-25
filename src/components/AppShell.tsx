@@ -6,7 +6,12 @@ import InstallButton from "./InstallButton";
 import LogPanel from "./LogPanel";
 import ErrorPanel from "./ErrorPanel";
 import { useInstaller } from "../state/installerStore";
-import { fitWindowHeight } from "../lib/tauri";
+import {
+  fitWindowHeight,
+  restoreIfMaximized,
+  toggleMaximizeWindow,
+  watchMaximized,
+} from "../lib/tauri";
 
 export default function AppShell() {
   const { phase } = useInstaller();
@@ -22,6 +27,55 @@ export default function AppShell() {
     observer.observe(el);
     fit();
     return () => observer.disconnect();
+  }, []);
+
+  //=-- While maximized, dragging a background area must not un-maximize the window (Windows does
+  //=-- that for native drags). Tauri starts the drag from a `document` mousedown listener, so a
+  //=-- capture listener on `window` can stop it first. Double-click still toggles maximize.
+  useEffect(() => {
+    let maximized = false;
+    let cancelled = false;
+    let unwatch: () => void = () => {};
+
+    void watchMaximized((m) => {
+      maximized = m;
+    }).then((un) => {
+      if (cancelled) un();
+      else unwatch = un;
+    });
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (!maximized || e.button !== 0) return;
+      const target = e.target as HTMLElement | null;
+      if (!target?.hasAttribute?.("data-tauri-drag-region")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.detail === 2) void toggleMaximizeWindow();
+    };
+    window.addEventListener("mousedown", onMouseDown, true);
+
+    return () => {
+      cancelled = true;
+      unwatch();
+      window.removeEventListener("mousedown", onMouseDown, true);
+    };
+  }, []);
+
+  //=-- Keyboard shortcuts: F11 toggles maximize; Esc restores, but only while maximized.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.repeat || e.defaultPrevented) return;
+      if (e.key === "F11") {
+        e.preventDefault();
+        void toggleMaximizeWindow();
+      } else if (e.key === "Escape") {
+        //=-- Esc also closes an open dropdown; leave that alone.
+        if ((e.target as HTMLElement | null)?.tagName === "SELECT") return;
+        void restoreIfMaximized();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   return (
