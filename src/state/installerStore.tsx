@@ -138,8 +138,9 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
         setConfig(cfg);
         if (cfg.app?.title) void api.setWindowTitle(cfg.app.title);
 
-        const defaultId = cfg.defaults?.siteId ?? cfg.sites[0]?.id ?? null;
-        setSelectedSiteId(defaultId);
+        //=-- Pre-select only a configured default that matches a site; otherwise leave the placeholder.
+        const defaultId = cfg.defaults?.siteId;
+        setSelectedSiteId(cfg.sites.some((s) => s.id === defaultId) ? (defaultId ?? null) : null);
 
         addLog("success", `Loaded config with ${cfg.sites.length} site(s)`);
         setPhase("ready");
