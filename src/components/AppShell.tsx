@@ -91,12 +91,18 @@ export default function AppShell() {
         <>
           <ErrorPanel />
 
-          <main data-tauri-drag-region className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
+          <main data-tauri-drag-region className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="flex flex-col gap-4">
               <SiteSelect />
               <InstallerStatus />
             </div>
-            <LogPanel />
+            {/*-- Two-column layout: the log is taken out of flow so the row height comes only from the
+                Site + Status column, and the log panel stretches to match it exactly. */}
+            <div className="relative">
+              <div className="lg:absolute lg:inset-0">
+                <LogPanel />
+              </div>
+            </div>
           </main>
 
           <div
