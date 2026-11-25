@@ -122,7 +122,7 @@ Tauri `#[tauri::command]` surface.
 
 ### `config.rs`
 
-`AppConfig`, `AppSection`, `InstallerSection`, `DefaultsSection`, `SiteConfig`, `AppMode`. JSON uses camelCase keys (`platform`, `downloadUrlTemplate`, `siteUid`, etc.).
+`AppConfig`, `AppSection` (`title`, `subtitle`, `theme`), `InstallerSection`, `DefaultsSection`, `SiteConfig`, `AppMode`. JSON uses camelCase keys (`platform`, `downloadUrlTemplate`, `siteUid`, etc.).
 
 ### `errors.rs`
 
