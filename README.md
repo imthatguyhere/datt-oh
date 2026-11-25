@@ -19,7 +19,10 @@ npm install          # install frontend dependencies
 npm run tauri dev    # run in development (hot reload)
 npm run tauri build  # produce a production Windows bundle
 npm run typecheck    # TypeScript-only check (tsc --noEmit)
+npm run icons        # sync app icons from resources/ without building
 ```
+
+`npm run tauri dev` and `npm run tauri build` automatically regenerate the app icons from `resources/logo.webp` / `resources/logo.ico` and clear the cached app build when either file changes (unchanged logos are skipped). `logo.webp` must be square.
 
 ## Configuration
 
