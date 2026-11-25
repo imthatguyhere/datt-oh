@@ -19,7 +19,7 @@ const phaseBadge: Record<string, string> = {
 };
 
 export default function InstallerStatus() {
-  const { phase, selectedSite, plan, result } = useInstaller();
+  const { phase, plan, result } = useInstaller();
 
   return (
     <section className="glow-panel card rounded-box p-5">
@@ -31,13 +31,6 @@ export default function InstallerStatus() {
       </div>
 
       <div className="space-y-1 text-sm">
-        {selectedSite && (
-          <div className="flex justify-between gap-2">
-            <span className="text-base-content/60">Site UID</span>
-            <code className="font-mono text-accent">{selectedSite.siteUid}</code>
-          </div>
-        )}
-
         {plan && (
           <>
             <div className="flex justify-between gap-2">
@@ -47,12 +40,6 @@ export default function InstallerStatus() {
             <div className="flex justify-between gap-2">
               <span className="text-base-content/60">Save path</span>
               <span className="truncate text-right font-mono">{plan.savePath}</span>
-            </div>
-            <div className="mt-2">
-              <span className="text-base-content/60">Arguments</span>
-              <pre className="mt-1 overflow-x-auto rounded-lg bg-base-200 p-2 font-mono text-xs text-base-content/80">
-                {plan.installerArgs.join(" ")}
-              </pre>
             </div>
           </>
         )}
