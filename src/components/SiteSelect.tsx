@@ -1,7 +1,18 @@
+import { useMemo } from "react";
 import { useInstaller } from "../state/installerStore";
 
 export default function SiteSelect() {
   const { config, selectedSite, selectSite } = useInstaller();
+
+  //=-- Alphabetical by short name (case-insensitive, numeric-aware so "2X" sorts before "10X").
+  const sortedSites = useMemo(
+    () =>
+      [...(config?.sites ?? [])].sort((a, b) =>
+        a.shortName.localeCompare(b.shortName, undefined, { sensitivity: "base", numeric: true }),
+      ),
+    [config],
+  );
+
   if (!config) return null;
 
   return (
@@ -13,9 +24,9 @@ export default function SiteSelect() {
         value={selectedSite?.id ?? ""}
         onChange={(e) => selectSite(e.target.value)}
       >
-        {config.sites.map((loc) => (
+        {sortedSites.map((loc) => (
           <option key={loc.id} value={loc.id}>
-            {loc.displayName} ({loc.id})
+            {loc.shortName} — {loc.displayName}
           </option>
         ))}
       </select>
