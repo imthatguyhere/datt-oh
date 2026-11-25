@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "datt-oh — Datto RMM Agent Installer",
+    "title": "datt-oh \u2014 Datto RMM Agent Installer",
     "theme": "warpburple"
   },
   "installer": {
@@ -8,8 +8,10 @@
     "downloadUrlTemplate": "https://{{platform}}.rmm.datto.com/download-agent/windows/{{siteUid}}",
     "defaultSavePath": "C:\\ProgramData\\datt-oh\\DattoAgent\\AgentSetup.exe",
     "defaultMode": "ui",
-    "silentArgs": [],
-    "successExitCodes": [0, 3010]
+    "successExitCodes": [
+      0,
+      3010
+    ]
   },
   "defaults": {
     "siteId": "77FORT"
@@ -33,6 +35,5 @@
       "displayName": "Westside Clinic",
       "siteUid": "00000000-0000-0000-0000-000000000003"
     }
-  ],
-  "arguments": []
+  ]
 }
