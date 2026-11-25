@@ -46,9 +46,8 @@ pub async fn build_install_plan(
             platform_override: platform_override.as_deref(),
             installer_url_override: installer_url_override.as_deref(),
             save_path_override: save_path_override.as_deref(),
-            selected_arguments: &request.selected_arguments,
             extra_args: &extra_args,
-            include_silent_args: false,
+            silent: false,
         },
     )
 }
@@ -75,9 +74,8 @@ pub async fn install_agent(
             platform_override: platform_override.as_deref(),
             installer_url_override: installer_url_override.as_deref(),
             save_path_override: save_path_override.as_deref(),
-            selected_arguments: &request.selected_arguments,
             extra_args: &extra_args,
-            include_silent_args: false,
+            silent: false,
         },
     )?;
 
