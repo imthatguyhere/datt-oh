@@ -12,9 +12,8 @@ pub struct InstallPlanInput<'a> {
     pub platform_override: Option<&'a str>,
     pub installer_url_override: Option<&'a str>,
     pub save_path_override: Option<&'a str>,
-    pub selected_arguments: &'a [String],
     pub extra_args: &'a [String],
-    pub include_silent_args: bool,
+    pub silent: bool,
 }
 
 /// Builds the download URL, save path, and installer arguments for the chosen site.
@@ -74,30 +73,6 @@ pub fn build_install_plan(
 
     let mut installer_args: Vec<String> = Vec::new();
 
-    //=-- Resolve checkbox-selected argument ids (UI mode).
-    for selected in input.selected_arguments {
-        if let Some(opt) = config
-            .arguments
-            .as_ref()
-            .and_then(|list| list.iter().find(|o| &o.id == selected))
-        {
-            if !installer_args.contains(&opt.argument) {
-                installer_args.push(opt.argument.clone());
-            }
-        }
-    }
-
-    //=-- Required silent args (silent mode only).
-    if input.include_silent_args {
-        if let Some(silent_args) = &config.installer.silent_args {
-            for arg in silent_args {
-                if !installer_args.contains(arg) {
-                    installer_args.push(arg.clone());
-                }
-            }
-        }
-    }
-
     //=-- Raw extra args from CLI/env.
     for arg in input.extra_args {
         if !installer_args.contains(arg) {
@@ -106,7 +81,7 @@ pub fn build_install_plan(
     }
 
     Ok(InstallPlan {
-        mode: if input.include_silent_args {
+        mode: if input.silent {
             "silent"
         } else {
             "ui"
@@ -162,7 +137,6 @@ mod tests {
                 display_name: "Site A".to_string(),
                 site_uid: "abc-123".to_string(),
             }],
-            arguments: None,
         }
     }
 
@@ -173,9 +147,8 @@ mod tests {
             platform_override: None,
             installer_url_override: None,
             save_path_override: None,
-            selected_arguments: &[],
             extra_args: &[],
-            include_silent_args: false,
+            silent: false,
         }
     }
 
