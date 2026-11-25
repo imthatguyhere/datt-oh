@@ -1,3 +1,4 @@
+import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import type {
   AppConfig,
@@ -7,6 +8,11 @@ import type {
   InstallResult,
   StartupContext,
 } from "./types";
+
+//=-- App version as built into the binary (from tauri.conf.json), not from the editable config.
+export function getAppVersion(): Promise<string> {
+  return getVersion();
+}
 
 export function getStartupContext(): Promise<StartupContext> {
   return invoke<StartupContext>("get_startup_context");
