@@ -10,9 +10,9 @@ export default function LogPanel() {
   const { logs } = useInstaller();
 
   return (
-    <section className="glow-panel card mx-auto w-full max-w-6xl rounded-box p-5">
+    <section className="glow-panel card w-full rounded-box p-5">
       <h2 className="mb-3 text-lg font-semibold">Log</h2>
-      <div className="max-h-64 overflow-y-auto rounded-lg bg-base-200/50 p-3 font-mono text-xs leading-relaxed">
+      <div className="max-h-96 overflow-y-auto rounded-lg bg-base-200/50 p-3 font-mono text-xs leading-relaxed">
         {logs.length === 0 ? (
           <p className="text-base-content/50">No log entries yet.</p>
         ) : (
