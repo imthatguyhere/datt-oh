@@ -91,8 +91,7 @@ export default function AppShell() {
         e.preventDefault();
         void toggleMaximizeWindow();
       } else if (e.key === "Escape") {
-        //=-- Esc also closes an open dropdown; leave that alone.
-        if ((e.target as HTMLElement | null)?.tagName === "SELECT") return;
+        //=-- The site dropdown calls preventDefault when Esc closes its list, so we return above.
         void restoreIfMaximized();
       }
     };

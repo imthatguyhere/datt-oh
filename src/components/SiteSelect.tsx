@@ -1,15 +1,22 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useInstaller } from "../state/installerStore";
 
 /**
- * Site picker card: dropdown sorted alphabetically by short name (shown as
+ * Site picker card: a themed dropdown sorted alphabetically by short name (shown as
  * "SHORT — Full name") below a "----------" placeholder, and details for the selected site.
  * Always rendered, so the placeholder shows even when no config loaded.
+ *
+ * The list is a custom listbox rather than a native `<select>`, because the native popup is drawn
+ * by the OS and cannot be themed. It supports click, arrow keys, Home/End, Enter/Space and Esc.
  *
  * @returns The site selection card.
  */
 export default function SiteSelect() {
   const { config, selectedSite, selectSite } = useInstaller();
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
   //=-- Alphabetical by short name (case-insensitive, numeric-aware so "2X" sorts before "10X").
   const sortedSites = useMemo(
@@ -20,23 +27,156 @@ export default function SiteSelect() {
     [config],
   );
 
+  //=-- Option 0 is the placeholder (empty id); the rest are the sorted sites.
+  const options = useMemo(
+    () => [
+      { id: "", label: "----------" },
+      ...sortedSites.map((s) => ({ id: s.id, label: `${s.shortName} — ${s.displayName}` })),
+    ],
+    [sortedSites],
+  );
+
+  const selectedIndex = Math.max(
+    0,
+    options.findIndex((o) => o.id === (selectedSite?.id ?? "")),
+  );
+
+  //=-- Close when clicking outside the dropdown.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  //=-- Keep the highlighted option visible while navigating with the keyboard.
+  useEffect(() => {
+    if (!open) return;
+    listRef.current?.children[active]?.scrollIntoView({ block: "nearest" });
+  }, [open, active]);
+
+  /** Opens the list with the current selection highlighted. */
+  const openList = () => {
+    setActive(selectedIndex);
+    setOpen(true);
+  };
+
+  /**
+   * Commits an option and closes the list.
+   *
+   * @param index - Index into `options`.
+   */
+  const choose = (index: number) => {
+    selectSite(options[index].id);
+    setOpen(false);
+  };
+
+  /**
+   * Keyboard handling for the dropdown button.
+   *
+   * @param e - The keydown event.
+   */
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    const last = options.length - 1;
+    switch (e.key) {
+      case "ArrowDown":
+      case "ArrowUp": {
+        e.preventDefault();
+        if (!open) return openList();
+        setActive((i) => Math.min(last, Math.max(0, i + (e.key === "ArrowDown" ? 1 : -1))));
+        break;
+      }
+      case "Home":
+      case "End":
+        if (!open) return;
+        e.preventDefault();
+        setActive(e.key === "Home" ? 0 : last);
+        break;
+      case "Enter":
+      case " ":
+        e.preventDefault();
+        if (open) choose(active);
+        else openList();
+        break;
+      case "Escape":
+        //=-- Closing the list is handled here; preventDefault keeps AppShell from also restoring the window.
+        if (open) {
+          e.preventDefault();
+          setOpen(false);
+        }
+        break;
+      case "Tab":
+        setOpen(false);
+        break;
+    }
+  };
+
   return (
-    <section className="glow-panel card rounded-box p-5">
+    <section className="glow-panel card relative z-20 rounded-box p-5">
       <h2 className="mb-3 text-lg font-semibold">Site</h2>
 
-      <select
-        className="select select-bordered w-full"
-        value={selectedSite?.id ?? ""}
-        onChange={(e) => selectSite(e.target.value)}
-      >
-        {/*=-- Placeholder entry: always present, so the dropdown is never empty (e.g. when no config loads). */}
-        <option value="">----------</option>
-        {sortedSites.map((loc) => (
-          <option key={loc.id} value={loc.id}>
-            {loc.shortName} — {loc.displayName}
-          </option>
-        ))}
-      </select>
+      <div ref={rootRef} className="relative">
+        <button
+          type="button"
+          role="combobox"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          onClick={() => (open ? setOpen(false) : openList())}
+          onKeyDown={onKeyDown}
+          className={`flex w-full items-center justify-between gap-3 rounded-field border bg-base-200/70 px-3 py-2 text-left outline-none transition ${
+            open
+              ? "border-primary shadow-[0_0_0_3px_rgba(124,58,237,0.25)]"
+              : "border-primary/30 hover:border-primary/60 focus-visible:border-primary"
+          }`}
+        >
+          <span className={`truncate ${selectedSite ? "" : "text-base-content/50"}`}>
+            {options[selectedIndex].label}
+          </span>
+          <svg
+            viewBox="0 0 20 20"
+            className={`size-4 shrink-0 text-primary transition-transform ${open ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M5 8l5 5 5-5" />
+          </svg>
+        </button>
+
+        {open && (
+          <ul
+            ref={listRef}
+            role="listbox"
+            className="absolute left-0 right-0 top-full z-30 mt-2 max-h-60 overflow-y-auto rounded-box border border-primary/40 bg-base-200/95 p-1.5 shadow-2xl shadow-black/60 ring-1 ring-secondary/20 backdrop-blur-md"
+          >
+            {options.map((o, i) => {
+              const selected = i === selectedIndex;
+              return (
+                <li
+                  key={o.id || "__none"}
+                  role="option"
+                  aria-selected={selected}
+                  onMouseEnter={() => setActive(i)}
+                  onClick={() => choose(i)}
+                  className={`flex cursor-pointer items-center justify-between gap-3 rounded-field px-3 py-2 text-sm transition-colors ${
+                    i === active ? "bg-primary/25 text-base-content" : "text-base-content/85"
+                  } ${o.id === "" ? "text-base-content/50" : ""}`}
+                >
+                  <span className="truncate">{o.label}</span>
+                  {selected && (
+                    <span className="size-2 shrink-0 rounded-full bg-accent shadow-[0_0_8px_var(--color-accent)]" />
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
 
       {/*=-- Always shown; falls back to a dash when no site is selected. */}
       <div className="mt-4 space-y-1 text-sm">
