@@ -1,13 +1,14 @@
 <!doctype html>
-<html lang="en" data-theme="warpburple">
+<html lang="en" data-theme="warpburple" data-tauri-drag-region>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/webp" href="/resources/logo.webp" />
     <title>datt-oh</title>
   </head>
-  <body>
-    <div id="root"></div>
+  <body data-tauri-drag-region>
+    <!-- html/body/#root are drag regions so extra space revealed by resizing still drags the window -->
+    <div id="root" data-tauri-drag-region></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
