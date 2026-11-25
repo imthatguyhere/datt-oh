@@ -1,6 +1,8 @@
-//=-- Wrapper around the Tauri CLI. Before `dev` / `build` it keeps the app icons in sync with
-//=-- resources/logo.webp + resources/logo.ico and clears the stale compiled-icon cache.
-//=-- Usage: `npm run tauri dev`, `npm run tauri build`, or `npm run icons` (prepare only).
+//=-- Wrapper around the Tauri CLI. Before `dev` / `build` it (1) writes the version from
+//=-- src-tauri/Cargo.toml (the source of truth) into package.json / package-lock.json, and
+//=-- (2) keeps the app icons in sync with resources/logo.webp + resources/logo.ico and clears
+//=-- the stale compiled-icon cache.
+//=-- Usage: `npm run tauri dev`, `npm run tauri build`, or `npm run sync` (prepare only).
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -16,6 +18,9 @@ const iconsDir = join(tauriDir, "icons");
 const hashFile = join(tauriDir, "target", ".logo-hash");
 const tauriCli = join(root, "node_modules", "@tauri-apps", "cli", "tauri.js");
 const crateName = "datt-oh";
+const cargoToml = join(tauriDir, "Cargo.toml");
+const packageJson = join(root, "package.json");
+const packageLock = join(root, "package-lock.json");
 
 /**
  * Runs a command and exits the process with its status if it fails.
@@ -72,11 +77,59 @@ function syncIcons() {
   writeFileSync(hashFile, current);
 }
 
+/**
+ * Reads `package.version` from src-tauri/Cargo.toml.
+ * @returns {string} The crate version, e.g. "1.0.0".
+ */
+function readCargoVersion() {
+  const toml = readFileSync(cargoToml, "utf8");
+  const pkg = toml.match(/^\[package\]([\s\S]*?)(?=^\[|$(?![\s\S]))/m);
+  const ver = pkg?.[1].match(/^version\s*=\s*"([^"]+)"/m);
+  if (!ver) {
+    console.error("[datt-oh] Could not find package.version in src-tauri/Cargo.toml.");
+    process.exit(1);
+  }
+  return ver[1];
+}
+
+/**
+ * Replaces the first `count` `"version": "..."` values in a file with `version`.
+ * Targeted text replacement so the file's formatting and line endings are preserved.
+ * @param {string} file File to update.
+ * @param {string} version New version string.
+ * @param {number} count How many leading occurrences to replace.
+ */
+function writeVersion(file, version, count) {
+  if (!existsSync(file)) return;
+  let seen = 0;
+  const text = readFileSync(file, "utf8");
+  const next = text.replace(/("version"\s*:\s*")[^"]*(")/g, (match, a, b) =>
+    ++seen <= count ? `${a}${version}${b}` : match,
+  );
+  if (next !== text) {
+    writeFileSync(file, next);
+    console.log(`[datt-oh] Set version ${version} in ${file.slice(root.length + 1)}`);
+  }
+}
+
+/**
+ * Copies the Cargo.toml version into package.json and the two root entries of package-lock.json.
+ */
+function syncVersion() {
+  const version = readCargoVersion();
+  writeVersion(packageJson, version, 1);
+  writeVersion(packageLock, version, 2);
+}
+
 const args = process.argv.slice(2);
 
 if (args[0] === "--prepare-only") {
+  syncVersion();
   syncIcons();
 } else {
-  if (args[0] === "dev" || args[0] === "build") syncIcons();
+  if (args[0] === "dev" || args[0] === "build") {
+    syncVersion();
+    syncIcons();
+  }
   run(process.execPath, [tauriCli, ...args], root);
 }
