@@ -125,7 +125,7 @@ Tauri `#[tauri::command]` surface.
 
 ### `logging.rs`
 
-- `load_dotenv` — loads `.env` from candidate sites.
+- `load_dotenv` — loads `.env` from candidate paths (`../.env`, `.env`, `<exe-dir>/.env`).
 - `write_log` — appends a timestamped, leveled line to the log file (creating parents).
 - `redact_args` / `redact_arg` — masks values whose key contains a sensitive token (password/secret/token/key/apikey/auth/credential).
 - `timestamp` / `civil_from_days` — dependency-free UTC ISO-8601 timestamp.
@@ -134,7 +134,7 @@ Tauri `#[tauri::command]` surface.
 
 ### `models/config.rs`
 
-`AppConfig`, `AppSection` (`title`, `subtitle`, `theme`), `InstallerSection`, `DefaultsSection`, `SiteConfig`, `AppMode`. JSON uses camelCase keys (`platform`, `downloadUrlTemplate`, `siteUid`, etc.).
+`AppConfig`, `AppSection` (`title`, `subtitle`, `theme`), `InstallerSection`, `DefaultsSection`, `SiteConfig`, `AppMode`. JSON uses camelCase keys (`platform`, `downloadUrlTemplate`, `siteUid`, etc.). Three fields are parsed but not currently used by any code: `app.theme`, `installer.defaultMode`, and `installer.sha256` (no checksum verification is performed).
 
 ### `errors.rs`
 
