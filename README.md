@@ -54,7 +54,7 @@ Copy `.env.example` to `.env` and adjust as needed.
 
 ### JSON config
 
-The JSON config may be a local file or an HTTP(S) URL. See `config.json` for a complete example. Sites are customer/site objects; the selected site's `siteUid` (the UID Datto RMM assigns to the site) is substituted into the agent download URL, which is what ties the installed agent to that site.
+The JSON config may be a local file or an HTTP(S) URL. See `config.json` for a complete example. The `app` section sets the header/footer branding: `title` and `subtitle`; a missing `subtitle` is simply not shown. The `v<version>` badge is not configurable — it is read from the built app (`version` in `src-tauri/tauri.conf.json`) so it always matches the binary. Sites are customer/site objects; the selected site's `siteUid` (the UID Datto RMM assigns to the site) is substituted into the agent download URL, which is what ties the installed agent to that site.
 
 The download URL comes from `installer.downloadUrlTemplate` (default `https://{{platform}}.rmm.datto.com/download-agent/windows/{{siteUid}}`), with `{{platform}}` taken from `installer.platform`, `PLATFORM`, or `/platform`. `/installerUrl` bypasses the template entirely. Verify the template against the agent download link shown in your own Datto RMM site settings, since the format can differ per platform/region.
 
