@@ -13,7 +13,7 @@ A Windows desktop app (Tauri v2 + React/TypeScript/Vite + Tailwind v4/daisyUI v5
 | Customer selection | `location` -> `machineGroup`            | `site` -> `siteUid`                                              |
 | Binding to the org | `/g=<machineGroup>` installer argument  | Site UID embedded in the per-site agent download URL             |
 | Download           | One generic `KcsSetup.exe` URL          | URL built from `platform` + `siteUid` (`downloadUrlTemplate`)    |
-| Installer switches | `/r /s /v /w /i /x` checkboxes          | None required; `arguments` / `silentArgs` optional and empty     |
+| Installer switches | `/r /s /v /w /i /x` checkboxes          | None; only raw `/extraArgs` if ever needed                       |
 
 ## Flow
 
