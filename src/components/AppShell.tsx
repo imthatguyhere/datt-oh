@@ -25,7 +25,7 @@ export default function AppShell() {
   }, []);
 
   return (
-    <div ref={rootRef} className="flex flex-col px-4 py-6 sm:px-8">
+    <div ref={rootRef} data-tauri-drag-region className="flex flex-col px-4 py-6 sm:px-8">
       <Header />
 
       {phase === "loading" ? (
@@ -37,7 +37,7 @@ export default function AppShell() {
         <>
           <ErrorPanel />
 
-          <main className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
+          <main data-tauri-drag-region className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
             <div className="flex flex-col gap-4">
               <SiteSelect />
               <InstallerStatus />
@@ -45,7 +45,10 @@ export default function AppShell() {
             <LogPanel />
           </main>
 
-          <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 pt-4 pb-4">
+          <div
+            data-tauri-drag-region
+            className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 pt-4 pb-4"
+          >
             <div className="text-sm text-base-content/60">
               {phase === "ready" && "Select a site, then install."}
               {phase === "complete" && "Installation complete."}
@@ -57,7 +60,7 @@ export default function AppShell() {
         </>
       )}
 
-      <footer className="mx-auto w-full max-w-6xl border-t border-base-300 pt-4 text-center text-xs text-base-content/50">
+      <footer data-tauri-drag-region className="mx-auto w-full max-w-6xl border-t border-base-300 pt-4 text-center text-xs text-base-content/50">
         By: Tyler Morrison (aka Imthatguyhere | ITGH)
       </footer>
     </div>

@@ -1,5 +1,6 @@
 import logo from "../../resources/logo.webp";
 import { useInstaller } from "../state/installerStore";
+import WindowControls from "./WindowControls";
 
 export default function Header() {
   const { config, appVersion } = useInstaller();
@@ -7,8 +8,11 @@ export default function Header() {
   const subtitle = config?.app?.subtitle;
 
   return (
-    <header className="mx-auto mb-6 flex w-full max-w-6xl items-center justify-between">
-      <div className="flex items-center gap-3">
+    <header
+      data-tauri-drag-region
+      className="mx-auto mb-6 flex w-full max-w-6xl items-center justify-between"
+    >
+      <div className="pointer-events-none flex items-center gap-3 select-none">
         <img
           src={logo}
           alt="datt-oh logo"
@@ -19,11 +23,14 @@ export default function Header() {
           {subtitle && <p className="text-xs text-base-content/60">{subtitle}</p>}
         </div>
       </div>
-      {appVersion && (
-        <span className="badge badge-outline badge-sm border-primary/40 text-primary">
-          v{appVersion}
-        </span>
-      )}
+      <div className="flex items-center gap-4">
+        {appVersion && (
+          <span className="badge badge-outline badge-sm pointer-events-none border-primary/40 text-primary select-none">
+            v{appVersion}
+          </span>
+        )}
+        <WindowControls />
+      </div>
     </header>
   );
 }

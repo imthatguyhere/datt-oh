@@ -24,10 +24,38 @@ export async function setWindowTitle(title: string): Promise<void> {
 //=-- never exceeding the available screen height. Ignored outside Tauri.
 export async function fitWindowHeight(height: number): Promise<void> {
   try {
+    const win = getCurrentWindow();
+    //=-- A maximized window keeps whatever size the user chose; fitting would un-maximize it.
+    if (await win.isMaximized()) return;
     const capped = Math.min(Math.ceil(height), window.screen.availHeight);
-    await getCurrentWindow().setSize(new LogicalSize(window.innerWidth, capped));
+    await win.setSize(new LogicalSize(window.innerWidth, capped));
   } catch {
     //=-- Not running inside Tauri; nothing to resize.
+  }
+}
+
+//=-- Custom window controls (the native title bar is disabled). Ignored outside Tauri.
+export async function closeWindow(): Promise<void> {
+  try {
+    await getCurrentWindow().close();
+  } catch {
+    //=-- Not running inside Tauri.
+  }
+}
+
+export async function minimizeWindow(): Promise<void> {
+  try {
+    await getCurrentWindow().minimize();
+  } catch {
+    //=-- Not running inside Tauri.
+  }
+}
+
+export async function toggleMaximizeWindow(): Promise<void> {
+  try {
+    await getCurrentWindow().toggleMaximize();
+  } catch {
+    //=-- Not running inside Tauri.
   }
 }
 
