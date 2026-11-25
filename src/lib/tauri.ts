@@ -38,24 +38,48 @@ export async function fitWindowHeight(height: number): Promise<void> {
 export async function closeWindow(): Promise<void> {
   try {
     await getCurrentWindow().close();
-  } catch {
-    //=-- Not running inside Tauri.
+  } catch (e) {
+    console.warn("closeWindow failed:", e);
   }
 }
 
 export async function minimizeWindow(): Promise<void> {
   try {
     await getCurrentWindow().minimize();
-  } catch {
-    //=-- Not running inside Tauri.
+  } catch (e) {
+    console.warn("minimizeWindow failed:", e);
   }
 }
 
 export async function toggleMaximizeWindow(): Promise<void> {
   try {
     await getCurrentWindow().toggleMaximize();
-  } catch {
-    //=-- Not running inside Tauri.
+  } catch (e) {
+    console.warn("toggleMaximizeWindow failed:", e);
+  }
+}
+
+//=-- Restores the window to its normal size, only if it is currently maximized. Ignored outside Tauri.
+export async function restoreIfMaximized(): Promise<void> {
+  try {
+    const win = getCurrentWindow();
+    if (await win.isMaximized()) await win.unmaximize();
+  } catch (e) {
+    console.warn("restoreIfMaximized failed:", e);
+  }
+}
+
+//=-- Reports the window's maximized state now and whenever it changes (resize events).
+//=-- Returns an unsubscribe function. Ignored outside Tauri.
+export async function watchMaximized(onChange: (maximized: boolean) => void): Promise<() => void> {
+  try {
+    const win = getCurrentWindow();
+    const update = async () => onChange(await win.isMaximized());
+    await update();
+    return await win.onResized(() => void update());
+  } catch (e) {
+    console.warn("watchMaximized failed:", e);
+    return () => {};
   }
 }
 
