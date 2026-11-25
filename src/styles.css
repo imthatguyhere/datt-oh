@@ -37,7 +37,18 @@
   --noise: 0;
 }
 
-html,
+/* The background lives on <html> and is pinned to the viewport, so it always matches the
+   window height as the native window is resized to fit the content. */
+html {
+  height: 100%;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(124, 58, 237, 0.18), transparent 60%),
+    radial-gradient(1000px 500px at 100% 110%, rgba(34, 211, 238, 0.12), transparent 60%),
+    var(--color-base-100);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
 body,
 #root {
   min-height: 100%;
@@ -45,10 +56,6 @@ body,
 
 body {
   margin: 0;
-  background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(124, 58, 237, 0.18), transparent 60%),
-    radial-gradient(1000px 500px at 100% 110%, rgba(34, 211, 238, 0.12), transparent 60%),
-    var(--color-base-100);
   color: var(--color-base-content);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
