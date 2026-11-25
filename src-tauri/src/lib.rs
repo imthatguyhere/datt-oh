@@ -147,9 +147,8 @@ async fn run_silent_async(
             platform_override: startup.platform.as_deref(),
             installer_url_override: startup.installer_url.as_deref(),
             save_path_override: startup.save_path.as_deref(),
-            selected_arguments: &[],
             extra_args: &startup.extra_args,
-            include_silent_args: true,
+            silent: true,
         },
     ) {
         Ok(p) => p,
