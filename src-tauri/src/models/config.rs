@@ -14,6 +14,7 @@ pub struct AppConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSection {
     pub title: Option<String>,
+    pub subtitle: Option<String>,
     pub theme: Option<String>,
 }
 
