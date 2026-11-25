@@ -2,6 +2,7 @@ export type AppMode = "ui" | "silent";
 
 export interface AppSection {
   title?: string;
+  subtitle?: string;
   theme?: string;
 }
 
