@@ -1,6 +1,5 @@
 import Header from "./Header";
 import SiteSelect from "./SiteSelect";
-import ArgumentCheckboxList from "./ArgumentCheckboxList";
 import InstallerStatus from "./InstallerStatus";
 import InstallButton from "./InstallButton";
 import LogPanel from "./LogPanel";
@@ -28,20 +27,18 @@ export default function AppShell() {
               <SiteSelect />
               <InstallerStatus />
             </div>
-            <ArgumentCheckboxList />
+            <LogPanel />
           </main>
 
           <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 pt-4 pb-4">
             <div className="text-sm text-base-content/60">
               {phase === "ready" && "Select a site, then install."}
               {phase === "complete" && "Installation complete."}
-              {phase === "failed" && "Review the error and log below."}
+              {phase === "failed" && "Review the error and log."}
               {(phase === "downloading" || phase === "running") && "Please wait..."}
             </div>
             <InstallButton />
           </div>
-
-          <LogPanel />
         </>
       )}
 
