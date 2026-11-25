@@ -39,6 +39,7 @@ let nextLogId = 1;
 interface InstallerContextValue {
   phase: InstallPhase;
   startup: StartupContext | null;
+  appVersion: string | null;
   config: AppConfig | null;
   error: string | null;
   selectedSite: SiteConfig | null;
@@ -55,6 +56,7 @@ const InstallerContext = createContext<InstallerContextValue | null>(null);
 export function InstallerProvider({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<InstallPhase>("loading");
   const [startup, setStartup] = useState<StartupContext | null>(null);
+  const [appVersion, setAppVersion] = useState<string | null>(null);
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
@@ -82,6 +84,7 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
       try {
         const ctx = await api.getStartupContext();
         if (cancelled) return;
+        api.getAppVersion().then((v) => !cancelled && setAppVersion(v)).catch(() => {});
         setStartup(ctx);
         //=-- Logged after the cancel check so StrictMode's dev double-mount only logs once.
         addLog("info", "Starting datt-oh...");
@@ -202,6 +205,7 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
     () => ({
       phase,
       startup,
+      appVersion,
       config,
       error,
       selectedSite,
@@ -215,6 +219,7 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
     [
       phase,
       startup,
+      appVersion,
       config,
       error,
       selectedSite,
