@@ -1,3 +1,5 @@
+//! Runs the downloaded installer and interprets its exit code.
+
 use std::time::Instant;
 
 use tokio::process::Command;
@@ -5,6 +7,10 @@ use tokio::process::Command;
 use crate::models::errors::AppError;
 use crate::models::installer::InstallResult;
 
+/// Runs the installer directly (no shell), capturing stdout, stderr, and the exit code.
+///
+/// An exit code listed in `success_codes` counts as success. Exit code `3010` always sets
+/// `reboot_required`, whether or not it is listed as a success code.
 pub async fn run_installer(
     save_path: &str,
     args: &[String],

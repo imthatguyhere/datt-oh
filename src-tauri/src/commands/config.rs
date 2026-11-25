@@ -1,3 +1,5 @@
+//! Tauri commands for startup context and config loading.
+
 use tauri::State;
 
 use crate::models::config::{AppConfig, AppMode};
@@ -6,6 +8,7 @@ use crate::models::installer::StartupContext;
 use crate::services::config_loader;
 use crate::AppState;
 
+/// Returns the resolved startup context (mode, config source, overrides, log path).
 #[tauri::command]
 pub fn get_startup_context(state: State<'_, AppState>) -> StartupContext {
     let silent = state.startup.silent || state.startup.mode == Some(AppMode::Silent);
@@ -24,6 +27,9 @@ pub fn get_startup_context(state: State<'_, AppState>) -> StartupContext {
     }
 }
 
+/// Loads and validates the config from a local path or URL.
+///
+/// `config_source` is a file path or an `http(s)` URL.
 #[tauri::command]
 pub async fn load_config(config_source: String) -> Result<AppConfig, AppError> {
     config_loader::load_config(&config_source).await

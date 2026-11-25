@@ -1,6 +1,12 @@
 import { useMemo } from "react";
 import { useInstaller } from "../state/installerStore";
 
+/**
+ * Site picker card: dropdown sorted alphabetically by short name (shown as
+ * "SHORT — Full name") and details for the selected site.
+ *
+ * @returns The site selection card.
+ */
 export default function SiteSelect() {
   const { config, selectedSite, selectSite } = useInstaller();
 

@@ -1,5 +1,8 @@
 import { useInstaller } from "../state/installerStore";
 
+/**
+ * Human-readable label for each install phase.
+ */
 const phaseLabel: Record<string, string> = {
   loading: "Loading config",
   ready: "Ready",
@@ -9,6 +12,9 @@ const phaseLabel: Record<string, string> = {
   failed: "Failed",
 };
 
+/**
+ * daisyUI badge class for each install phase.
+ */
 const phaseBadge: Record<string, string> = {
   loading: "badge-info",
   ready: "badge-success",
@@ -18,6 +24,11 @@ const phaseBadge: Record<string, string> = {
   failed: "badge-error",
 };
 
+/**
+ * Status card: current phase badge, plus the installer URL, save path and exit code once known.
+ *
+ * @returns The status card.
+ */
 export default function InstallerStatus() {
   const { phase, plan, result } = useInstaller();
 

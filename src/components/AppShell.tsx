@@ -13,6 +13,17 @@ import {
   watchMaximized,
 } from "../lib/tauri";
 
+/**
+ * Top-level layout: header, site/status column, log panel, action row, and footer.
+ *
+ * Also owns the native-window behaviour: it keeps the window as tall as the content,
+ * blocks drag-to-unmaximize while maximized, and handles the F11 / Esc shortcuts.
+ *
+ * The Site + Status column sets the row height; the log panel is absolutely positioned
+ * in its cell (large screens) so it stretches to exactly that height.
+ *
+ * @returns The page layout.
+ */
 export default function AppShell() {
   const { phase } = useInstaller();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -44,6 +55,12 @@ export default function AppShell() {
       else unwatch = un;
     });
 
+    /**
+     * Stops drag-region mouse-downs while maximized (so Windows cannot un-maximize the
+     * window by dragging) and turns a double-click into a maximize toggle.
+     *
+     * @param e - The captured mouse event.
+     */
     const onMouseDown = (e: MouseEvent) => {
       if (!maximized || e.button !== 0) return;
       const target = e.target as HTMLElement | null;
@@ -63,6 +80,11 @@ export default function AppShell() {
 
   //=-- Keyboard shortcuts: F11 toggles maximize; Esc restores, but only while maximized.
   useEffect(() => {
+    /**
+     * F11 toggles maximize; Esc restores a maximized window (ignored inside the site dropdown).
+     *
+     * @param e - The keyboard event.
+     */
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.repeat || e.defaultPrevented) return;
       if (e.key === "F11") {
@@ -96,8 +118,6 @@ export default function AppShell() {
               <SiteSelect />
               <InstallerStatus />
             </div>
-            {/*-- Two-column layout: the log is taken out of flow so the row height comes only from the
-                Site + Status column, and the log panel stretches to match it exactly. */}
             <div className="relative">
               <div className="lg:absolute lg:inset-0">
                 <LogPanel />

@@ -1,13 +1,21 @@
 //=-- Utility to extract a human-readable message from any error shape
 
+/**
+ * Shape of the structured error the Rust backend (`AppError`) sends across the Tauri boundary.
+ */
 interface TauriError {
   category?: string;
   detail?: string;
   message?: string;
 }
 
-//=-- Extract error message from Tauri structured errors (AppError),
-//=-- standard Error objects, or plain strings
+/**
+ * Extracts a human-readable message from any error shape: Tauri `AppError`
+ * (`{ category, detail }`), standard `Error`, plain string, or arbitrary object.
+ *
+ * @param err - The caught value.
+ * @returns A message suitable for display.
+ */
 export function extractErrorMessage(err: unknown): string {
   if (err === null || err === undefined) {
     return "Unknown error";

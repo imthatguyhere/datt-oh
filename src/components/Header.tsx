@@ -2,6 +2,12 @@ import logo from "../../resources/logo.webp";
 import { useInstaller } from "../state/installerStore";
 import WindowControls from "./WindowControls";
 
+/**
+ * Page header: logo, title and subtitle from the config, the app version badge, and the
+ * window controls. It is a drag region so it can move the window.
+ *
+ * @returns The header element.
+ */
 export default function Header() {
   const { config, appVersion } = useInstaller();
   const title = config?.app?.title ?? "Datt-Oh!";

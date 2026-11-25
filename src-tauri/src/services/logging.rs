@@ -1,8 +1,11 @@
+//! `.env` loading, file logging, argument redaction, and a dependency-free UTC timestamp.
+
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
 
-//=-- Loads .env from common sites (dev mode runs from src-tauri/, so check parent too).
+/// Loads the first existing `.env` from `../.env`, `.env`, then `<exe-dir>/.env` (`tauri dev` runs from
+/// `src-tauri/`, so the parent directory is checked first). Only one file is loaded.
 pub fn load_dotenv() {
     let mut candidates = vec!["../.env".to_string(), ".env".to_string()];
 
@@ -20,6 +23,9 @@ pub fn load_dotenv() {
     }
 }
 
+/// Appends a timestamped, leveled line to the log file, creating parent directories as needed.
+///
+/// Logging failures are ignored so they can never break an install.
 pub fn write_log(log_path: &str, level: &str, message: &str) {
     let line = format!("[{}] {} {}\n", timestamp(), level, message);
 
@@ -38,6 +44,7 @@ pub fn write_log(log_path: &str, level: &str, message: &str) {
     }
 }
 
+/// Joins arguments for logging, masking values whose key looks sensitive.
 pub fn redact_args(args: &[String]) -> String {
     args.iter()
         .map(|a| redact_arg(a))
@@ -45,11 +52,14 @@ pub fn redact_args(args: &[String]) -> String {
         .join(" ")
 }
 
+/// Masks the value of a `key=value` / `key:value` argument when the key (ignoring leading `/` or `-`)
+/// contains a sensitive word. Arguments without `=` or `:` are returned unchanged.
 fn redact_arg(arg: &str) -> String {
-    if let Some(eq) = arg.find(|c: char| c == '=' || c == ':') {
+    if let Some(eq) = arg.find(['=', ':']) {
         let key = arg[..eq]
-            .trim_start_matches(|c: char| c == '/' || c == '-')
+            .trim_start_matches(['/', '-'])
             .to_lowercase();
+        /// Key fragments that mark an argument value as sensitive.
         const SENSITIVE: &[&str] = &[
             "password",
             "secret",
@@ -67,7 +77,7 @@ fn redact_arg(arg: &str) -> String {
     arg.to_string()
 }
 
-//=-- Dependency-free UTC timestamp formatted as ISO-8601.
+/// Dependency-free UTC timestamp formatted as ISO-8601.
 fn timestamp() -> String {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -87,7 +97,7 @@ fn timestamp() -> String {
     )
 }
 
-//=-- Converts days since the Unix epoch to a (year, month, day) tuple.
+/// Converts days since the Unix epoch to a `(year, month, day)` tuple.
 fn civil_from_days(z: i64) -> (i64, u32, u32) {
     let z = z + 719_468;
     let era = if z >= 0 { z } else { z - 146_096 } / 146_097;

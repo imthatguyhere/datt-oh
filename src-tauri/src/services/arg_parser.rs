@@ -1,9 +1,15 @@
+//! Windows-style command-line parsing and startup resolution (CLI > environment > `.env`).
+
 use std::collections::HashMap;
 
 use crate::models::config::AppMode;
 use crate::models::startup::StartupArgs;
 
-//=-- Parses Windows-style args: /key=value, -key=value, /key value, /flag, -flag.
+/// Parses Windows-style arguments: `/key=value`, `-key=value`, `/key value`, `/flag`, `-flag`.
+///
+/// Keys are lower-cased and surrounding quotes are stripped from values. `silent` is always a flag.
+/// A space-separated value may not itself start with `/` or `-` (it would be read as the next key,
+/// leaving the first key as a flag); use `key=value` for such values.
 pub fn parse_args(raw: &[String]) -> HashMap<String, String> {
     let mut map = HashMap::new();
     let mut i = 0;
@@ -45,7 +51,7 @@ pub fn parse_args(raw: &[String]) -> HashMap<String, String> {
     map
 }
 
-//=-- Resolves startup args with precedence: CLI > process env > .env (loaded earlier).
+/// Resolves startup arguments with precedence CLI > process environment > `.env` (loaded earlier).
 pub fn resolve_startup(raw: &[String]) -> StartupArgs {
     let cli = parse_args(raw);
 
@@ -83,6 +89,7 @@ pub fn resolve_startup(raw: &[String]) -> StartupArgs {
     }
 }
 
+/// Returns the first non-empty value found, checking CLI keys first and then environment variables.
 fn get_str(cli: &HashMap<String, String>, cli_keys: &[&str], env_keys: &[&str]) -> Option<String> {
     for key in cli_keys {
         if let Some(v) = cli.get(*key) {
@@ -105,17 +112,19 @@ fn get_str(cli: &HashMap<String, String>, cli_keys: &[&str], env_keys: &[&str]) 
     None
 }
 
+/// Reads a boolean environment variable (`1`, `true`, `yes`, `on`).
 fn env_bool(key: &str) -> bool {
     std::env::var(key)
         .map(|v| matches!(v.trim().to_lowercase().as_str(), "1" | "true" | "yes" | "on"))
         .unwrap_or(false)
 }
 
+/// Splits a raw argument string on whitespace.
 fn split_args(s: &str) -> Vec<String> {
     s.split_whitespace().map(|x| x.to_string()).collect()
 }
 
-//=-- First existing candidate, accounting for `tauri dev` running from src-tauri/.
+/// Returns the first existing default config path, accounting for `tauri dev` running from `src-tauri/`.
 pub fn default_config_source() -> Option<String> {
     for candidate in ["../config.json", "config.json", "./config.json"] {
         if std::path::Path::new(candidate).exists() {
@@ -125,6 +134,7 @@ pub fn default_config_source() -> Option<String> {
     None
 }
 
+/// Returns the default log path: `%ProgramData%\datt-oh\logs\installer.log`.
 pub fn default_log_path() -> String {
     let base = std::env::var("ProgramData").unwrap_or_else(|_| "C:\\ProgramData".to_string());
     format!("{}\\datt-oh\\logs\\installer.log", base)

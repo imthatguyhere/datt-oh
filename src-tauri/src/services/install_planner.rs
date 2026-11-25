@@ -1,18 +1,28 @@
+//! Builds the install plan: resolves the site and expands the per-site download URL.
+
 use crate::models::config::{AppConfig, SiteConfig};
 use crate::models::errors::AppError;
 use crate::models::installer::InstallPlan;
 
-//=-- Datto RMM agent download URL used when the config has no `downloadUrlTemplate`.
+/// Datto RMM agent download URL used when the config has no `downloadUrlTemplate`.
 pub const DEFAULT_DOWNLOAD_URL_TEMPLATE: &str =
     "https://{{platform}}.rmm.datto.com/download-agent/windows/{{siteUid}}";
 
+/// Inputs for [`build_install_plan`].
 pub struct InstallPlanInput<'a> {
+    /// Id of the site to install for (case-insensitive).
     pub site_id: &'a str,
+    /// Overrides the site UID from the config.
     pub site_uid_override: Option<&'a str>,
+    /// Overrides `installer.platform`.
     pub platform_override: Option<&'a str>,
+    /// Full download URL; skips the template entirely.
     pub installer_url_override: Option<&'a str>,
+    /// Overrides `installer.defaultSavePath`.
     pub save_path_override: Option<&'a str>,
+    /// Raw extra installer arguments from the CLI or environment.
     pub extra_args: &'a [String],
+    /// Whether this is a silent-mode run (reported in the plan).
     pub silent: bool,
 }
 
@@ -104,12 +114,12 @@ pub fn apply_template(template: &str, site: &SiteConfig, site_uid: &str, platfor
         .replace("{{displayName}}", &site.display_name)
 }
 
-//=-- Site UIDs are GUID-like; restrict characters since the value is placed in a URL.
+/// Site UIDs are GUID-like; only letters, digits and `-` are allowed since the value is placed in a URL.
 pub fn is_valid_site_uid(uid: &str) -> bool {
     !uid.is_empty() && uid.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
 }
 
-//=-- Platform is a DNS label such as "concord" or "zinfandel".
+/// Platform is a DNS label such as `concord` or `zinfandel`.
 pub fn is_valid_platform(platform: &str) -> bool {
     !platform.is_empty()
         && platform
@@ -117,11 +127,13 @@ pub fn is_valid_platform(platform: &str) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || c == '-')
 }
 
+/// Unit tests for install planning.
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::models::config::InstallerSection;
 
+    /// Builds a minimal valid config with one site.
     fn config() -> AppConfig {
         AppConfig {
             app: None,
@@ -140,6 +152,7 @@ mod tests {
         }
     }
 
+    /// Builds default planner input for site `a`.
     fn input<'a>() -> InstallPlanInput<'a> {
         InstallPlanInput {
             site_id: "a",
@@ -152,6 +165,7 @@ mod tests {
         }
     }
 
+    /// The default template expands with the configured platform and the site UID.
     #[test]
     fn expands_default_template() {
         let plan = build_install_plan(&config(), &input()).unwrap();
@@ -162,6 +176,7 @@ mod tests {
         assert!(plan.installer_args.is_empty());
     }
 
+    /// A missing platform is reported as `PlatformMissing`.
     #[test]
     fn missing_platform_is_an_error() {
         let mut cfg = config();
@@ -172,6 +187,7 @@ mod tests {
         ));
     }
 
+    /// A site UID containing path characters is rejected.
     #[test]
     fn rejects_unsafe_site_uid() {
         let mut inp = input();

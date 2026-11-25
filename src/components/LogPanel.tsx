@@ -1,12 +1,21 @@
 import { useEffect, useRef } from "react";
 import { useInstaller } from "../state/installerStore";
 
+/**
+ * Text colour class for each log level.
+ */
 const levelClass: Record<string, string> = {
   info: "text-base-content/70",
   success: "text-success",
   error: "text-error",
 };
 
+/**
+ * Scrollable, auto-following log of install progress. Its height is set by its parent
+ * (it fills the cell it is placed in).
+ *
+ * @returns The log panel.
+ */
 export default function LogPanel() {
   const { logs } = useInstaller();
   const scrollRef = useRef<HTMLDivElement>(null);

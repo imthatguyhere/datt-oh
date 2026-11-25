@@ -1,6 +1,12 @@
 import type { AppConfig, SiteConfig } from "./types";
 
-//=-- Case-insensitive site lookup by id.
+/**
+ * Case-insensitive site lookup by id.
+ *
+ * @param config - The loaded config.
+ * @param siteId - The id to find.
+ * @returns The matching site, or `undefined`.
+ */
 export function findSite(
   config: AppConfig,
   siteId: string,
@@ -9,7 +15,12 @@ export function findSite(
   return config.sites.find((loc) => loc.id.trim().toLowerCase() === needle);
 }
 
-//=-- Returns a list of human-readable validation errors (empty when valid).
+/**
+ * Validates the config structure (non-empty sites, unique ids, required fields).
+ *
+ * @param config - The loaded config.
+ * @returns Human-readable validation errors; empty when valid.
+ */
 export function validateConfig(config: AppConfig): string[] {
   const errors: string[] = [];
 

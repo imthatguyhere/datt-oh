@@ -1,5 +1,8 @@
 import { closeWindow, minimizeWindow, toggleMaximizeWindow } from "../lib/tauri";
 
+/**
+ * Props for a single traffic-light button.
+ */
 interface ControlProps {
   label: string;
   color: string;
@@ -7,7 +10,12 @@ interface ControlProps {
   onClick: () => void;
 }
 
-//=-- One traffic-light button: a coloured circle whose glyph appears on hover.
+/**
+ * One traffic-light button: a coloured circle whose glyph appears on hover.
+ *
+ * @param props - Accessible label, colour class, hover glyph and click handler.
+ * @returns The button.
+ */
 function Control({ label, color, glyph, onClick }: ControlProps) {
   return (
     <button
@@ -24,8 +32,12 @@ function Control({ label, color, glyph, onClick }: ControlProps) {
   );
 }
 
-//=-- Custom window controls (the native title bar is disabled). Right-aligned order,
-//=-- left to right: maximize (green), minimize (yellow), close (red).
+/**
+ * Custom window controls (the native title bar is disabled). Left to right: maximize
+ * (green), minimize (yellow), close (red).
+ *
+ * @returns The control group.
+ */
 export default function WindowControls() {
   return (
     <div className="flex items-center gap-2">

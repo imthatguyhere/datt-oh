@@ -1,5 +1,11 @@
 import { useInstaller } from "../state/installerStore";
 
+/**
+ * Primary action button that starts the install; disabled while busy, after completion, or
+ * when no site is selected.
+ *
+ * @returns The install button.
+ */
 export default function InstallButton() {
   const { phase, selectedSite, install } = useInstaller();
 

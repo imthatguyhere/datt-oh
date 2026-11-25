@@ -1,3 +1,5 @@
+//! Streams the Datto RMM agent installer to disk.
+
 use std::io::Write;
 use std::path::Path;
 use std::time::Instant;
@@ -5,6 +7,9 @@ use std::time::Instant;
 use crate::models::errors::AppError;
 use crate::models::installer::DownloadResult;
 
+/// Streams `url` to `save_path`, creating parent directories and rejecting empty (0-byte) downloads.
+///
+/// Returns the destination, size, and duration.
 pub async fn download_installer(url: &str, save_path: &str) -> Result<DownloadResult, AppError> {
     let start = Instant::now();
 

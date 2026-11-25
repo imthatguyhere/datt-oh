@@ -17,6 +17,9 @@ import type {
 import { extractErrorMessage } from "../lib/errors";
 import * as api from "../lib/tauri";
 
+/**
+ * Lifecycle phase of the install flow.
+ */
 export type InstallPhase =
   | "loading"
   | "ready"
@@ -25,8 +28,14 @@ export type InstallPhase =
   | "complete"
   | "failed";
 
+/**
+ * Severity of a log entry.
+ */
 export type LogLevel = "info" | "error" | "success";
 
+/**
+ * One line in the on-screen log.
+ */
 export interface LogEntry {
   id: number;
   time: string;
@@ -36,6 +45,9 @@ export interface LogEntry {
 
 let nextLogId = 1;
 
+/**
+ * Everything the installer context exposes to components.
+ */
 interface InstallerContextValue {
   phase: InstallPhase;
   startup: StartupContext | null;
@@ -51,8 +63,19 @@ interface InstallerContextValue {
   reset: () => void;
 }
 
+/**
+ * React context holding the installer state; use {@link useInstaller} to read it.
+ */
 const InstallerContext = createContext<InstallerContextValue | null>(null);
 
+/**
+ * Owns the install state machine: loads startup context and config, tracks the selected
+ * site, runs the install, and collects log entries.
+ *
+ * @param props - Provider props.
+ * @param props.children - The component tree that may call {@link useInstaller}.
+ * @returns The context provider.
+ */
 export function InstallerProvider({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<InstallPhase>("loading");
   const [startup, setStartup] = useState<StartupContext | null>(null);
@@ -64,6 +87,12 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
   const [result, setResult] = useState<InstallResult | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
+  /**
+   * Appends a timestamped entry to the on-screen log.
+   *
+   * @param level - Severity of the entry.
+   * @param message - Text to show.
+   */
   const addLog = useCallback((level: LogLevel, message: string) => {
     setLogs((prev) => [
       ...prev,
@@ -80,6 +109,10 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
+    /**
+     * Loads startup context, config and app version on mount. Results are discarded if the
+     * effect was cancelled (React StrictMode double-mounts in development).
+     */
     async function init() {
       try {
         const ctx = await api.getStartupContext();
@@ -130,6 +163,11 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
     [config, selectedSiteId],
   );
 
+  /**
+   * Selects a site and clears any previous plan, result and error.
+   *
+   * @param id - The site id to select.
+   */
   const selectSite = useCallback((id: string) => {
     setSelectedSiteId(id);
     setPlan(null);
@@ -138,6 +176,10 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
     setPhase((prev) => (prev === "failed" ? "ready" : prev));
   }, []);
 
+  /**
+   * Runs the install: build the plan, download the installer, run it, and update the phase
+   * and log as each step completes or fails.
+   */
   const install = useCallback(async () => {
     if (!selectedSiteId) {
       const msg = "Please select a site first.";
@@ -195,6 +237,9 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
     }
   }, [selectedSiteId, config, addLog]);
 
+  /**
+   * Returns to the ready state, clearing the plan, result and error.
+   */
   const reset = useCallback(() => {
     setPhase("ready");
     setPlan(null);
@@ -236,6 +281,12 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
   return <InstallerContext.Provider value={value}>{children}</InstallerContext.Provider>;
 }
 
+/**
+ * Reads the installer context.
+ *
+ * @throws If called outside an {@link InstallerProvider}.
+ * @returns The installer state and actions.
+ */
 export function useInstaller(): InstallerContextValue {
   const ctx = useContext(InstallerContext);
   if (!ctx) {

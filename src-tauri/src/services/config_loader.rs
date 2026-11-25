@@ -1,7 +1,10 @@
+//! Loads the JSON config from a local file or an HTTP(S) URL and validates it.
+
 use crate::models::config::AppConfig;
 use crate::models::errors::AppError;
 use crate::services::install_planner::is_valid_site_uid;
 
+/// Loads, parses, and validates the config from a local path or an `http(s)` URL.
 pub async fn load_config(source: &str) -> Result<AppConfig, AppError> {
     let source = source.trim();
 
@@ -18,12 +21,14 @@ pub async fn load_config(source: &str) -> Result<AppConfig, AppError> {
     Ok(config)
 }
 
+/// Reads the config file from disk.
 fn load_local(path: &str) -> Result<String, AppError> {
     std::fs::read_to_string(path).map_err(|e| {
         AppError::ConfigLoadFailed(format!("Could not read '{}': {}", path, e))
     })
 }
 
+/// Fetches the config over HTTP(S).
 async fn load_remote(url: &str) -> Result<String, AppError> {
     let client = reqwest::Client::new();
     let resp = client
@@ -45,6 +50,7 @@ async fn load_remote(url: &str) -> Result<String, AppError> {
     })
 }
 
+/// Validates the config: non-empty `sites`, unique case-insensitive ids, and a non-empty, URL-safe `siteUid` per site.
 pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
     if config.sites.is_empty() {
         return Err(AppError::ConfigInvalid(
@@ -53,32 +59,32 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
     }
 
     let mut seen = std::collections::HashSet::new();
-    for loc in &config.sites {
-        if loc.id.trim().is_empty() {
+    for site in &config.sites {
+        if site.id.trim().is_empty() {
             return Err(AppError::ConfigInvalid(
                 "A site has an empty 'id'".to_string(),
             ));
         }
 
-        let key = loc.id.trim().to_lowercase();
+        let key = site.id.trim().to_lowercase();
         if !seen.insert(key) {
             return Err(AppError::ConfigInvalid(format!(
                 "Duplicate site id: {}",
-                loc.id
+                site.id
             )));
         }
 
-        if loc.site_uid.trim().is_empty() {
+        if site.site_uid.trim().is_empty() {
             return Err(AppError::ConfigInvalid(format!(
                 "Site '{}' has an empty 'siteUid'",
-                loc.id
+                site.id
             )));
         }
 
-        if !is_valid_site_uid(loc.site_uid.trim()) {
+        if !is_valid_site_uid(site.site_uid.trim()) {
             return Err(AppError::ConfigInvalid(format!(
                 "Site '{}' has an invalid 'siteUid' (letters, digits and '-' only)",
-                loc.id
+                site.id
             )));
         }
     }

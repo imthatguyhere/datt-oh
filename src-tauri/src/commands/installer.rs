@@ -1,3 +1,5 @@
+//! Tauri commands for planning, downloading, and running the Datto RMM agent installer.
+
 use tauri::State;
 
 use crate::models::config::AppConfig;
@@ -10,11 +12,15 @@ use crate::services::{
 };
 use crate::AppState;
 
+/// Downloads the installer from `url` to `save_path`.
 #[tauri::command]
 pub async fn download_installer(url: String, save_path: String) -> Result<DownloadResult, AppError> {
     downloader::download_installer(&url, &save_path).await
 }
 
+/// Runs the installer at `save_path` with `args`.
+///
+/// `success_codes` defaults to `[0, 3010]` when not provided.
 #[tauri::command]
 pub async fn run_installer(
     save_path: String,
@@ -25,6 +31,7 @@ pub async fn run_installer(
     process_runner::run_installer(&save_path, &args, &codes).await
 }
 
+/// Builds and validates the install plan for the requested site, before any download.
 #[tauri::command]
 pub async fn build_install_plan(
     state: State<'_, AppState>,
@@ -52,6 +59,7 @@ pub async fn build_install_plan(
     )
 }
 
+/// High-level install: build the plan, download the installer, then run it, logging each step.
 #[tauri::command]
 pub async fn install_agent(
     state: State<'_, AppState>,
@@ -116,6 +124,7 @@ pub async fn install_agent(
     Ok(result)
 }
 
+/// Reloads the config from the source resolved at startup.
 async fn load_state_config(state: &State<'_, AppState>) -> Result<AppConfig, AppError> {
     let source = state
         .config_source

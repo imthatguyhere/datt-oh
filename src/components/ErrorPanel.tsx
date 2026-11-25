@@ -1,5 +1,10 @@
 import { useInstaller } from "../state/installerStore";
 
+/**
+ * Shows the current install/config error as an alert, or nothing when there is none.
+ *
+ * @returns The error alert, or `null`.
+ */
 export default function ErrorPanel() {
   const { error } = useInstaller();
   if (!error) return null;

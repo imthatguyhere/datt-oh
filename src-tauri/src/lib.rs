@@ -1,7 +1,10 @@
-//=-- datt-oh library entry point: silent-mode handling + Tauri UI builder.
+//! datt-oh library entry point: startup resolution, the headless silent install flow, and the Tauri UI builder.
 
+/// Tauri commands.
 mod commands;
+/// Data types.
 mod models;
+/// Backend services.
 mod services;
 
 use models::config::AppMode;
@@ -9,12 +12,20 @@ use models::startup::StartupArgs;
 use services::arg_parser::{default_config_source, default_log_path, resolve_startup};
 use services::logging::{load_dotenv, write_log};
 
+/// Managed Tauri state shared by all commands.
 pub struct AppState {
+    /// Startup arguments resolved from the CLI and environment.
     pub startup: StartupArgs,
+    /// Config path or URL, if one was found.
     pub config_source: Option<String>,
+    /// Log file path.
     pub log_path: String,
 }
 
+/// Application entry point.
+///
+/// Loads `.env`, resolves startup arguments, and either runs the silent install flow
+/// (then exits the process with its exit code) or launches the Tauri UI.
 pub fn run() {
     load_dotenv();
 
@@ -58,12 +69,19 @@ pub fn run() {
         .expect("error while running datt-oh application");
 }
 
-//=-- Runs the silent install flow synchronously (spins up a tokio runtime).
+/// Runs the silent install flow synchronously by spinning up a tokio runtime.
+///
+/// Returns the process exit code.
 fn run_silent(startup: StartupArgs, config_source: Option<String>, log_path: String) -> i32 {
     let rt = tokio::runtime::Runtime::new().expect("failed to build tokio runtime");
     rt.block_on(run_silent_async(startup, config_source, log_path))
 }
 
+/// The silent install flow: load config, resolve the site, build the plan, download, and run.
+///
+/// Returns `0` on success. On a backend error, returns that error's exit code (see
+/// `AppError::exit_code`). If the installer itself fails, returns its own positive exit code, or `9`
+/// when it has none.
 async fn run_silent_async(
     startup: StartupArgs,
     config_source: Option<String>,
