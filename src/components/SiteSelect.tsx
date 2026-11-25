@@ -1,5 +1,39 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { badgeStyle } from "../lib/badgeColor";
 import { useInstaller } from "../state/installerStore";
+
+/**
+ * A short name rendered as a badge whose color is derived from the name itself.
+ *
+ * @param props.name - The site short name.
+ * @returns The badge.
+ */
+function ShortNameBadge({ name }: { name: string }) {
+  return (
+    <span
+      className="inline-block shrink-0 rounded-md border px-2 py-0.5 font-mono text-xs font-semibold leading-tight"
+      style={badgeStyle(name)}
+    >
+      {name}
+    </span>
+  );
+}
+
+/**
+ * Dropdown row content: a short-name badge followed by the full name, or the plain placeholder.
+ *
+ * @param props.option - The option to render (an empty `shortName` means the placeholder).
+ * @returns The label content.
+ */
+function OptionLabel({ option }: { option: { label: string; shortName: string; displayName: string } }) {
+  if (!option.shortName) return <span className="truncate">{option.label}</span>;
+  return (
+    <>
+      <ShortNameBadge name={option.shortName} />
+      <span className="truncate">{option.displayName}</span>
+    </>
+  );
+}
 
 /**
  * Site picker card: a themed dropdown sorted alphabetically by short name (shown as
@@ -30,8 +64,13 @@ export default function SiteSelect() {
   //=-- Option 0 is the placeholder (empty id); the rest are the sorted sites.
   const options = useMemo(
     () => [
-      { id: "", label: "----------" },
-      ...sortedSites.map((s) => ({ id: s.id, label: `${s.shortName} — ${s.displayName}` })),
+      { id: "", label: "----------", shortName: "", displayName: "" },
+      ...sortedSites.map((s) => ({
+        id: s.id,
+        label: `${s.shortName} — ${s.displayName}`,
+        shortName: s.shortName,
+        displayName: s.displayName,
+      })),
     ],
     [sortedSites],
   );
@@ -131,8 +170,8 @@ export default function SiteSelect() {
               : "border-primary/30 hover:border-primary/60 focus-visible:border-primary"
           }`}
         >
-          <span className={`truncate ${selectedSite ? "" : "text-base-content/50"}`}>
-            {options[selectedIndex].label}
+          <span className={`flex min-w-0 items-center gap-2 ${selectedSite ? "" : "text-base-content/50"}`}>
+            <OptionLabel option={options[selectedIndex]} />
           </span>
           <svg
             viewBox="0 0 20 20"
@@ -167,7 +206,9 @@ export default function SiteSelect() {
                     i === active ? "bg-primary/25 text-base-content" : "text-base-content/85"
                   } ${o.id === "" ? "text-base-content/50" : ""}`}
                 >
-                  <span className="truncate">{o.label}</span>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <OptionLabel option={o} />
+                  </span>
                   {selected && (
                     <span className="size-2 shrink-0 rounded-full bg-accent shadow-[0_0_8px_var(--color-accent)]" />
                   )}
@@ -182,7 +223,7 @@ export default function SiteSelect() {
       <div className="mt-4 space-y-1 text-sm">
         <div className="flex justify-between gap-2">
           <span className="text-base-content/60">Short name</span>
-          <span className="font-mono">{selectedSite?.shortName ?? "—"}</span>
+          {selectedSite ? <ShortNameBadge name={selectedSite.shortName} /> : <span className="font-mono">—</span>}
         </div>
         <div className="flex justify-between gap-2">
           <span className="text-base-content/60">Site UID</span>
