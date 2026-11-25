@@ -15,7 +15,7 @@ export default function InstallButton() {
   return (
     <button
       type="button"
-      className="btn btn-primary btn-lg gap-2 shadow-lg shadow-primary/30 disabled:border-base-content/30 disabled:bg-base-300 disabled:text-base-content disabled:shadow-none"
+      className="btn btn-primary btn-lg gap-2 shadow-lg shadow-primary/30 disabled:border-base-content/30 disabled:bg-base-300 disabled:shadow-none disabled:text-[color-mix(in_srgb,currentColor,black_30%)]"
       onClick={install}
       disabled={disabled}
     >
