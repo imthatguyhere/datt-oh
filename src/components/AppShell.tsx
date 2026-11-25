@@ -7,7 +7,11 @@ import ErrorPanel from "./ErrorPanel";
 import { useInstaller } from "../state/installerStore";
 
 export default function AppShell() {
-  const { phase } = useInstaller();
+  const { phase, config, appVersion } = useInstaller();
+  const app = config?.app;
+  const footerText = [app?.title, app?.subtitle, appVersion && `v${appVersion}`]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div className="flex min-h-screen flex-col px-4 py-6 sm:px-8">
@@ -43,7 +47,7 @@ export default function AppShell() {
       )}
 
       <footer className="mx-auto w-full max-w-6xl border-t border-base-300 pt-4 text-center text-xs text-base-content/50">
-        datt-oh · Datto RMM Agent Installer · v1.0.0
+        {footerText}
       </footer>
     </div>
   );
