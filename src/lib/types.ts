@@ -10,7 +10,6 @@ export interface InstallerSection {
   downloadUrlTemplate?: string;
   defaultSavePath?: string;
   defaultMode?: AppMode;
-  silentArgs?: string[];
   successExitCodes?: number[];
   sha256?: string;
 }
@@ -26,20 +25,11 @@ export interface SiteConfig {
   siteUid: string;
 }
 
-export interface InstallerArgumentOption {
-  id: string;
-  label: string;
-  description?: string;
-  argument: string;
-  defaultChecked?: boolean;
-}
-
 export interface AppConfig {
   app?: AppSection;
   installer: InstallerSection;
   defaults?: DefaultsSection;
   sites: SiteConfig[];
-  arguments?: InstallerArgumentOption[];
 }
 
 export interface StartupContext {
@@ -57,12 +47,10 @@ export interface StartupContext {
 
 export interface InstallPlanRequest {
   siteId: string;
-  selectedArguments: string[];
 }
 
 export interface InstallRequest {
   siteId: string;
-  selectedArguments: string[];
 }
 
 export interface InstallPlan {
