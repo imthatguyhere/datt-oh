@@ -21,7 +21,6 @@ pub struct StartupContext {
 #[serde(rename_all = "camelCase")]
 pub struct InstallRequest {
     pub site_id: String,
-    pub selected_arguments: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
