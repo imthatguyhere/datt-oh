@@ -45,7 +45,7 @@ Precedence (highest first): CLI args → environment variables → `.env` → JS
 - Backend: `cargo build` via `tauri build`. `build.rs` invokes `tauri_build::build()`.
 - `src-tauri/tauri.conf.json` wires `devUrl` (dev server) and `frontendDist: ../dist` (production).
 - `crate-type = ["lib", "staticlib"]` — `cdylib` is intentionally omitted because it triggers the GNU linker's export-ordinal limit on Windows.
-- Icons are generated from `src-tauri/app-icon.svg` via `npx tauri icon`.
+- Branding lives in `resources/`: `logo.webp` (square) is the header logo, favicon, and source for `npx tauri icon resources/logo.webp`, which generates the icons in `src-tauri/icons/`; `logo.ico` is then copied over `src-tauri/icons/icon.ico`. This is automated by `scripts/tauri.mjs` (the `tauri` npm script): on `dev`/`build` it hashes both logo files, compares against `src-tauri/target/.logo-hash`, and when they differ regenerates the icons, copies the `.ico`, and runs `cargo clean -p datt-oh` (Cargo does not detect icon-only changes because `generate_context!()` embeds them). `npm run icons` runs just this step.
 - The release binary uses `windows_subsystem = "windows"` (no console window).
 
 ## main.rs
