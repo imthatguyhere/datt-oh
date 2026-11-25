@@ -19,10 +19,10 @@ npm install          # install frontend dependencies
 npm run tauri dev    # run in development (hot reload)
 npm run tauri build  # produce a production Windows bundle
 npm run typecheck    # TypeScript-only check (tsc --noEmit)
-npm run icons        # sync app icons from resources/ without building
+npm run sync         # sync version + app icons without building
 ```
 
-`npm run tauri dev` and `npm run tauri build` automatically regenerate the app icons from `resources/logo.webp` / `resources/logo.ico` and clear the cached app build when either file changes (unchanged logos are skipped). `logo.webp` must be square.
+`npm run tauri dev` and `npm run tauri build` first copy the version from `src-tauri/Cargo.toml` into `package.json`/`package-lock.json`, then automatically regenerate the app icons from `resources/logo.webp` / `resources/logo.ico` and clear the cached app build when either file changes (unchanged logos are skipped). `logo.webp` must be square.
 
 ## Configuration
 
@@ -54,7 +54,7 @@ Copy `.env.example` to `.env` and adjust as needed.
 
 ### JSON config
 
-The JSON config may be a local file or an HTTP(S) URL. See `config.json` for a complete example. The `app` section sets the header/footer branding: `title` and `subtitle`; a missing `subtitle` is simply not shown. The `v<version>` badge is not configurable — it is read from the built app (`version` in `src-tauri/tauri.conf.json`) so it always matches the binary. Sites are customer/site objects; the selected site's `siteUid` (the UID Datto RMM assigns to the site) is substituted into the agent download URL, which is what ties the installed agent to that site.
+The JSON config may be a local file or an HTTP(S) URL. See `config.json` for a complete example. The `app` section sets the header/footer branding: `title` and `subtitle`; a missing `subtitle` is simply not shown. The `v<version>` badge is not configurable — it is read from the built app (`version` in `src-tauri/Cargo.toml`, the single source of truth — `tauri.conf.json` deliberately has no `version`, and `package.json` is overwritten from it on every dev/build, so never edit its version by hand) so it always matches the binary. Sites are customer/site objects; the selected site's `siteUid` (the UID Datto RMM assigns to the site) is substituted into the agent download URL, which is what ties the installed agent to that site.
 
 The download URL comes from `installer.downloadUrlTemplate` (default `https://{{platform}}.rmm.datto.com/download-agent/windows/{{siteUid}}`), with `{{platform}}` taken from `installer.platform`, `PLATFORM`, or `/platform`. `/installerUrl` bypasses the template entirely. Verify the template against the agent download link shown in your own Datto RMM site settings, since the format can differ per platform/region.
 
