@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import Header from "./Header";
 import SiteSelect from "./SiteSelect";
 import InstallerStatus from "./InstallerStatus";
@@ -5,20 +6,30 @@ import InstallButton from "./InstallButton";
 import LogPanel from "./LogPanel";
 import ErrorPanel from "./ErrorPanel";
 import { useInstaller } from "../state/installerStore";
+import { fitWindowHeight } from "../lib/tauri";
 
 export default function AppShell() {
-  const { phase, config, appVersion } = useInstaller();
-  const app = config?.app;
-  const footerText = [app?.title, app?.subtitle, appVersion && `v${appVersion}`]
-    .filter(Boolean)
-    .join(" · ");
+  const { phase } = useInstaller();
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  //=-- Keep the native window exactly as tall as the content (re-fits as the log grows or text wraps).
+  //=-- The root must not stretch to the window height (no min-h-screen) or this would feed back.
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const fit = () => void fitWindowHeight(el.getBoundingClientRect().height);
+    const observer = new ResizeObserver(fit);
+    observer.observe(el);
+    fit();
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div className="flex min-h-screen flex-col px-4 py-6 sm:px-8">
+    <div ref={rootRef} className="flex flex-col px-4 py-6 sm:px-8">
       <Header />
 
       {phase === "loading" ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 text-base-content/70">
+        <div className="flex flex-col items-center justify-center gap-4 py-24 text-base-content/70">
           <span className="loading loading-spinner loading-lg text-primary" />
           <p>Loading configuration...</p>
         </div>
@@ -47,7 +58,7 @@ export default function AppShell() {
       )}
 
       <footer className="mx-auto w-full max-w-6xl border-t border-base-300 pt-4 text-center text-xs text-base-content/50">
-        {footerText}
+        By: Tyler Morrison (aka Imthatguyhere | ITGH)
       </footer>
     </div>
   );

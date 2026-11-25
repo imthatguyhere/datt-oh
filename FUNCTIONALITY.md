@@ -39,6 +39,12 @@ Precedence (highest first): CLI args → environment variables → `.env` → JS
 - **`.env` loading** (`services/logging.rs::load_dotenv`) tries `../.env`, `.env`, then `<exe-dir>/.env`.
 - **JSON config** (`services/config_loader.rs`) loads a local path or HTTP(S) URL, parses with serde, and validates (non-empty `sites`, unique case-insensitive `id`, non-empty `siteUid` limited to letters/digits/`-`).
 
+## Window behavior
+
+- The native window title starts as `datt-oh` (`tauri.conf.json`) and is replaced by `app.title` from the config once it loads (`setWindowTitle` in `src/lib/tauri.ts`, called from the installer store).
+- `AppShell` observes its root element with a `ResizeObserver` and calls `fitWindowHeight` so the window's inner height always matches the content (capped to the screen's available height; width is left to the user). The root deliberately has no `min-h-screen`, otherwise the content would stretch to the window and the fit would feed back. `tauri.conf.json` sets a small `minHeight` (300) so the window can shrink.
+- Both rely on the `core:window:allow-set-title` and `core:window:allow-set-size` permissions in `src-tauri/capabilities/default.json`.
+
 ## Build and release packaging
 
 - Frontend: `npm run build` runs `tsc` then `vite build`, emitting to `dist/`.
@@ -47,7 +53,7 @@ Precedence (highest first): CLI args → environment variables → `.env` → JS
 - `crate-type = ["lib", "staticlib"]` — `cdylib` is intentionally omitted because it triggers the GNU linker's export-ordinal limit on Windows.
 - Branding lives in `resources/`: `logo.webp` (square) is the header logo, favicon, and source for `npx tauri icon resources/logo.webp`, which generates the icons in `src-tauri/icons/`; `logo.ico` is then copied over `src-tauri/icons/icon.ico`. This is automated by `scripts/tauri.mjs` (the `tauri` npm script): on `dev`/`build` it hashes both logo files, compares against `src-tauri/target/.logo-hash`, and when they differ regenerates the icons, copies the `.ico`, and runs `cargo clean -p datt-oh` (Cargo does not detect icon-only changes because `generate_context!()` embeds them). `npm run sync` runs the version and icon steps without launching Tauri.
 - The release binary uses `windows_subsystem = "windows"` (no console window).
-- Versioning: `src-tauri/Cargo.toml` `package.version` is the single source of truth. `tauri.conf.json` omits `version`, so Tauri falls back to Cargo's for the bundle and for `getVersion()` (shown in the UI header/footer). `scripts/tauri.mjs` (`syncVersion`) copies that version into `package.json` and the two root entries of `package-lock.json` on every `dev`/`build` (and `npm run sync`), using targeted text replacement so formatting is untouched. `package.json`'s version is therefore an output, never an input.
+- Versioning: `src-tauri/Cargo.toml` `package.version` is the single source of truth. `tauri.conf.json` omits `version`, so Tauri falls back to Cargo's for the bundle and for `getVersion()` (shown in the UI header badge). `scripts/tauri.mjs` (`syncVersion`) copies that version into `package.json` and the two root entries of `package-lock.json` on every `dev`/`build` (and `npm run sync`), using targeted text replacement so formatting is untouched. `package.json`'s version is therefore an output, never an input.
 
 ## main.rs
 

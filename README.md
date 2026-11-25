@@ -54,7 +54,7 @@ Copy `.env.example` to `.env` and adjust as needed.
 
 ### JSON config
 
-The JSON config may be a local file or an HTTP(S) URL. See `config.json` for a complete example. The `app` section sets the header/footer branding: `title` and `subtitle`; a missing `subtitle` is simply not shown. The `v<version>` badge is not configurable — it is read from the built app (`version` in `src-tauri/Cargo.toml`, the single source of truth — `tauri.conf.json` deliberately has no `version`, and `package.json` is overwritten from it on every dev/build, so never edit its version by hand) so it always matches the binary. Sites are customer/site objects; the selected site's `siteUid` (the UID Datto RMM assigns to the site) is substituted into the agent download URL, which is what ties the installed agent to that site.
+The JSON config may be a local file or an HTTP(S) URL. See `config.json` for a complete example. The `app` section sets the header branding (and the window title): `title` and `subtitle`; a missing `subtitle` is simply not shown. The footer credit is hardcoded in the UI. The `v<version>` header badge is not configurable — it is read from the built app (`version` in `src-tauri/Cargo.toml`, the single source of truth — `tauri.conf.json` deliberately has no `version`, and `package.json` is overwritten from it on every dev/build, so never edit its version by hand) so it always matches the binary. Sites are customer/site objects; the selected site's `siteUid` (the UID Datto RMM assigns to the site) is substituted into the agent download URL, which is what ties the installed agent to that site.
 
 The download URL comes from `installer.downloadUrlTemplate` (default `https://{{platform}}.rmm.datto.com/download-agent/windows/{{siteUid}}`), with `{{platform}}` taken from `installer.platform`, `PLATFORM`, or `/platform`. `/installerUrl` bypasses the template entirely. Verify the template against the agent download link shown in your own Datto RMM site settings, since the format can differ per platform/region.
 
@@ -69,7 +69,7 @@ datt-oh.exe
 datt-oh.exe /config=https://example.com/datto-config.json
 ```
 
-Shows the main window with a site dropdown and status on the left and a live log panel on the right.
+Shows the main window (titled from `app.title` in the config, and automatically sized to fit its content) with a site dropdown and status on the left and a live log panel on the right.
 
 ### Silent mode
 

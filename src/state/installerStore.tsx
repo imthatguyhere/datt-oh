@@ -103,6 +103,7 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
         const cfg = await api.loadConfig(ctx.configSource);
         if (cancelled) return;
         setConfig(cfg);
+        if (cfg.app?.title) void api.setWindowTitle(cfg.app.title);
 
         const defaultId = cfg.defaults?.siteId ?? cfg.sites[0]?.id ?? null;
         setSelectedSiteId(defaultId);
