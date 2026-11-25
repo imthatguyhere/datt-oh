@@ -106,7 +106,7 @@ Tauri `#[tauri::command]` surface.
 
 ### `install_planner.rs`
 
-- `build_install_plan` — resolves the site by id, validates the site UID (`is_valid_site_uid`: letters, digits, `-`), builds the download URL (an `installerUrl` override wins; otherwise `installer.downloadUrlTemplate` or `DEFAULT_DOWNLOAD_URL_TEMPLATE`, with the platform from override → `installer.platform`, else `PlatformMissing`), then appends checkbox args, silent args (silent mode), and raw extra args (deduplicated). No site argument is passed to the installer; the site binding lives in the download URL.
+- `build_install_plan` — resolves the site by id, validates the site UID (`is_valid_site_uid`: letters, digits, `-`), builds the download URL (an `installerUrl` override wins; otherwise `installer.downloadUrlTemplate` or `DEFAULT_DOWNLOAD_URL_TEMPLATE`, with the platform from override → `installer.platform`, else `PlatformMissing`), then appends raw extra args (deduplicated). No site argument is passed to the installer; the site binding lives in the download URL.
 - `apply_template` — substitutes `{{platform}}`, `{{siteUid}}`, `{{id}}`, `{{shortName}}`, `{{displayName}}`.
 - `is_valid_site_uid` / `is_valid_platform` — character allow-lists, since both values are placed in a URL.
 - Unit tests cover default template expansion, missing platform, and unsafe site UIDs.
@@ -122,7 +122,7 @@ Tauri `#[tauri::command]` surface.
 
 ### `config.rs`
 
-`AppConfig`, `AppSection`, `InstallerSection`, `DefaultsSection`, `SiteConfig`, `InstallerArgumentOption`, `AppMode`. JSON uses camelCase keys (`platform`, `downloadUrlTemplate`, `siteUid`, etc.).
+`AppConfig`, `AppSection`, `InstallerSection`, `DefaultsSection`, `SiteConfig`, `AppMode`. JSON uses camelCase keys (`platform`, `downloadUrlTemplate`, `siteUid`, etc.).
 
 ### `errors.rs`
 
