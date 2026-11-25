@@ -55,7 +55,7 @@ The JSON config may be a local file or an HTTP(S) URL. See `config.json` for a c
 
 The download URL comes from `installer.downloadUrlTemplate` (default `https://{{platform}}.rmm.datto.com/download-agent/windows/{{siteUid}}`), with `{{platform}}` taken from `installer.platform`, `PLATFORM`, or `/platform`. `/installerUrl` bypasses the template entirely. Verify the template against the agent download link shown in your own Datto RMM site settings, since the format can differ per platform/region.
 
-The optional `arguments` array defines installer-argument checkboxes shown in the UI (and pre-selected via `defaultChecked`); `installer.silentArgs` are appended in silent mode. Both ship empty because the Datto agent installer needs no site argument — add entries only if you have verified installer switches to pass. `installer.successExitCodes` (default `[0, 3010]`) lists exit codes treated as success.
+The Datto agent installer needs no site argument, so the app passes none; the only way to supply installer switches is the raw `/extraArgs` CLI/env value. `installer.successExitCodes` (default `[0, 3010]`) lists exit codes treated as success.
 
 ## Usage
 
@@ -66,7 +66,7 @@ datt-oh.exe
 datt-oh.exe /config=https://example.com/datto-config.json
 ```
 
-Shows the main window with a site dropdown, optional installer-argument checkboxes (with a "Reset to defaults" control to restore the `defaultChecked` selection), status, and a live log panel.
+Shows the main window with a site dropdown and status on the left and a live log panel on the right.
 
 ### Silent mode
 
@@ -141,7 +141,7 @@ The **Rust backend is authoritative** for config loading, filesystem access, dow
 ### Frontend (`src/`)
 
 - `App.tsx`, `main.tsx` — entry point and provider wiring
-- `components/` — `AppShell`, `Header`, `SiteSelect`, `ArgumentCheckboxList`, `InstallerStatus`, `InstallButton`, `LogPanel`, `ErrorPanel`
+- `components/` — `AppShell`, `Header`, `SiteSelect`, `InstallerStatus`, `InstallButton`, `LogPanel`, `ErrorPanel`
 - `lib/` — `types`, `tauri` (command wrappers), `config`, `validation`, `installerArgs`, `errors`
 - `state/installerStore` — React context + state machine
 - `styles.css` — warpburple theme (Tailwind v4 + daisyUI v5)
