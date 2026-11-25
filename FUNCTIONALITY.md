@@ -43,7 +43,9 @@ Precedence (highest first): CLI args → environment variables → `.env` → JS
 
 - The native window title starts as `datt-oh` (`tauri.conf.json`) and is replaced by `app.title` from the config once it loads (`setWindowTitle` in `src/lib/tauri.ts`, called from the installer store).
 - `AppShell` observes its root element with a `ResizeObserver` and calls `fitWindowHeight` so the window's inner height always matches the content (capped to the screen's available height; width is left to the user). The root deliberately has no `min-h-screen`, otherwise the content would stretch to the window and the fit would feed back. `tauri.conf.json` sets a small `minHeight` (300) so the window can shrink.
-- Both rely on the `core:window:allow-set-title` and `core:window:allow-set-size` permissions in `src-tauri/capabilities/default.json`.
+- The native title bar is disabled (`"decorations": false` in `tauri.conf.json`). `data-tauri-drag-region` is set on the page root, header, `main`, the action row, and the footer so dragging any background area moves the window (the attribute is not inherited, so cards and controls do not drag; the header's logo/title/badge use `pointer-events-none` so clicks fall through to the header).
+- `WindowControls` (in `src/components/WindowControls.tsx`) renders the right-aligned traffic lights — green maximize/restore, yellow minimize, red close — via `toggleMaximizeWindow`, `minimizeWindow`, and `closeWindow` in `src/lib/tauri.ts`. `fitWindowHeight` skips fitting while the window is maximized so it does not un-maximize it.
+- Permissions required in `src-tauri/capabilities/default.json`: `core:window:allow-set-title`, `allow-set-size`, `allow-start-dragging`, `allow-close`, `allow-minimize`, `allow-toggle-maximize`, `allow-is-maximized`.
 
 ## Build and release packaging
 
@@ -127,7 +129,7 @@ Tauri `#[tauri::command]` surface.
 
 ## models/
 
-### `config.rs`
+### `models/config.rs`
 
 `AppConfig`, `AppSection` (`title`, `subtitle`, `theme`), `InstallerSection`, `DefaultsSection`, `SiteConfig`, `AppMode`. JSON uses camelCase keys (`platform`, `downloadUrlTemplate`, `siteUid`, etc.).
 
@@ -135,16 +137,16 @@ Tauri `#[tauri::command]` surface.
 
 `AppError` (thiserror) with `category()`, `exit_code()`, and a manual `Serialize` impl emitting `{ category, detail }` for the frontend. `ErrorCategory` enumerates config/validation/download/filesystem/installer/argument/site/network/unknown.
 
-### `installer.rs`
+### `models/installer.rs`
 
 DTOs for the Tauri boundary: `StartupContext`, `InstallRequest`, `InstallPlan`, `DownloadResult`, `InstallResult` (all `camelCase`).
 
-### `startup.rs`
+### `models/startup.rs`
 
 `StartupArgs` — resolved CLI/env startup values.
 
 ## Target software
 
-| installed_name | osd_description    | detection function                                 |
-| -------------- | ------------------ | -------------------------------------------------- |
-| Datto agent    | Datto RMM agent | Site-specific installer download (`siteUid` in URL) + execution |
+| installed_name | osd_description    | detection function                                              |
+| -------------- | ------------------ | --------------------------------------------------------------- |
+| Datto agent    | Datto RMM agent    | Site-specific installer download (`siteUid` in URL) + execution |
