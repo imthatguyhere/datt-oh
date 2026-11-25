@@ -2,8 +2,9 @@ import logo from "../../resources/logo.webp";
 import { useInstaller } from "../state/installerStore";
 
 export default function Header() {
-  const { config } = useInstaller();
+  const { config, appVersion } = useInstaller();
   const title = config?.app?.title ?? "Datt-Oh!";
+  const subtitle = config?.app?.subtitle;
 
   return (
     <header className="mx-auto mb-6 flex w-full max-w-6xl items-center justify-between">
@@ -15,10 +16,14 @@ export default function Header() {
         />
         <div>
           <h1 className="text-xl font-bold tracking-tight">{title}</h1>
-          <p className="text-xs text-base-content/60">Datto RMM Agent Installer</p>
+          {subtitle && <p className="text-xs text-base-content/60">{subtitle}</p>}
         </div>
       </div>
-      <span className="badge badge-outline badge-sm border-primary/40 text-primary">v1.0.0</span>
+      {appVersion && (
+        <span className="badge badge-outline badge-sm border-primary/40 text-primary">
+          v{appVersion}
+        </span>
+      )}
     </header>
   );
 }
