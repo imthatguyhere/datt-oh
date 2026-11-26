@@ -85,3 +85,21 @@ pub struct InstallResult {
     /// Whether the installer asked for a reboot (exit code `3010`).
     pub reboot_required: bool,
 }
+
+/// Outcome of verifying a downloaded installer.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VerifyResult {
+    /// File size in bytes.
+    pub file_size: u64,
+    /// Lowercase hex SHA-256 of the file.
+    pub sha256: String,
+    /// Whether the hash equals the configured `installer.sha256`; `None` when none is configured.
+    pub sha256_matches: Option<bool>,
+    /// Authenticode status (`Valid`, `NotSigned`, `HashMismatch`, ...) or `NotChecked`.
+    pub signature_status: String,
+    /// Signer certificate subject, when signed.
+    pub signer: Option<String>,
+    /// `false` only when the file is unusable or a configured hash does not match.
+    pub passed: bool,
+}
