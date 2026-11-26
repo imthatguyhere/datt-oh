@@ -11,7 +11,7 @@ import { useInstaller } from "../state/installerStore";
 function ShortNameBadge({ name }: { name: string }) {
   return (
     <span
-      className="inline-block shrink-0 rounded-md border px-2 py-0.5 font-mono text-xs font-semibold leading-tight"
+      className="inline-block shrink-0 rounded-md border px-2 pt-0.75 pb-[0.5px] font-mono text-xs font-semibold leading-tight"
       style={badgeStyle(name)}
     >
       {name}

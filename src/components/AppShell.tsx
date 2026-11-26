@@ -185,7 +185,7 @@ export default function AppShell() {
       <div
         aria-hidden="true"
         style={isMaximized ? { inset: 1 } : undefined}
-        className={`pointer-events-none fixed inset-0 z-[60] border border-primary/50 shadow-[inset_0_0_10px_rgba(124,58,237,0.15)] transition-opacity duration-150 ${
+        className={`pointer-events-none fixed inset-0 z-60 border border-primary/50 shadow-[inset_0_0_10px_rgba(124,58,237,0.15)] transition-opacity duration-150 ${
           isMaximized ? "" : "rounded-lg"
         } ${focused ? "opacity-100" : "opacity-0"}`}
       />
