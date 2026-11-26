@@ -9,8 +9,8 @@ import { useInstaller } from "../state/installerStore";
 export default function InstallButton() {
   const { phase, selectedSite, install } = useInstaller();
 
-  const busy = phase === "downloading" || phase === "running";
-  const disabled = busy || phase === "loading" || phase === "complete" || !selectedSite;
+  const busy = phase === "downloading" || phase === "verifying" || phase === "running";
+  const disabled = busy || phase === "confirming" || phase === "loading" || phase === "complete" || !selectedSite;
 
   return (
     <button
