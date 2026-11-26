@@ -1,4 +1,4 @@
-//! Backend services: argument parsing, config loading, planning, downloading, running, and logging.
+//! Backend services: argument parsing, config loading, planning, downloading, verifying, running, and logging.
 
 /// Argument parsing.
 pub mod arg_parser;
@@ -12,3 +12,5 @@ pub mod install_planner;
 pub mod logging;
 /// Installer execution.
 pub mod process_runner;
+/// Downloaded-installer verification.
+pub mod verifier;
