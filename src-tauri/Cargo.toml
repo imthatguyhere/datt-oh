@@ -1,6 +1,6 @@
 [package]
 name = "datt-oh"
-version = "0.0.17"
+version = "0.1.1"
 description = "Datt-Oh! — Datto RMM Agent Installer"
 authors = ["imthatguyhere"]
 edition = "2021"
