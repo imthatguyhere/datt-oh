@@ -5,6 +5,7 @@ import InstallerStatus from "./InstallerStatus";
 import InstallButton from "./InstallButton";
 import LogPanel from "./LogPanel";
 import ErrorPanel from "./ErrorPanel";
+import ConfirmDialog from "./ConfirmDialog";
 import { useInstaller } from "../state/installerStore";
 import {
   fitWindowHeight,
@@ -132,12 +133,14 @@ export default function AppShell() {
               {phase === "ready" && "Select a site, then install."}
               {phase === "complete" && "Installation complete."}
               {phase === "failed" && "Review the error and log."}
-              {(phase === "downloading" || phase === "running") && "Please wait..."}
+              {(phase === "downloading" || phase === "verifying" || phase === "running") && "Please wait..."}
             </div>
             <InstallButton />
           </div>
         </>
       )}
+
+      <ConfirmDialog />
 
       <footer data-tauri-drag-region className="mx-auto w-full max-w-6xl border-t border-base-300 pt-4 text-center text-xs text-base-content/50">
         By: Tyler Morrison (aka Imthatguyhere | ITGH)
