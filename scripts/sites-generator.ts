@@ -12,11 +12,14 @@
  *   `https://vidal-api.centrastage.net`) or a full `http(s)://` API URL, which is used as given.
  *   When not set, it is asked for, with `installer.platform` from `config.json` as the default.
  * - `--out` / `SITES_OUT`: output file (default `sites.json` in the repo root).
+ *
+ * Optional name fixes live in `scripts/site-names.json` (see {@link NameOverride}); sites it does
+ * not mention keep the names derived from Datto.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 /** A site as returned by the Datto RMM API (only the fields used here). */
 interface DattoSite {
@@ -89,13 +92,53 @@ function splitName(name: string): { shortName: string; displayName: string } {
 }
 
 /**
- * Converts Datto sites to config sites: splits names, builds unique case-insensitive ids from
- * the short name (a numeric suffix is added on collision), and sorts by short name.
+ * A fix for how a site is named, from `scripts/site-names.json`. A plain string replaces the
+ * display name; an object can also replace the short name.
+ *
+ * Keys are matched ignoring case, spacing and dash style, in two ways: against the full Datto site
+ * name (any site), or against the short name of a site whose Datto name has no delimiter (just a
+ * code, or a code with a bracketed note). The second form is never applied to a site whose name
+ * has a delimiter, so a code shared by several sites cannot name the wrong one.
+ */
+export type NameOverride = string | { shortName?: string; displayName: string };
+
+/**
+ * Normalizes a name for matching: unifies dash styles, collapses spacing, lowercases.
+ *
+ * @param text - The name to normalize.
+ * @returns The comparison key.
+ */
+function normalizeKey(text: string): string {
+  return text.replace(/[–—]/g, "-").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/**
+ * Loads `scripts/site-names.json` if it exists.
+ *
+ * @returns Overrides keyed by normalized name, with the key as written for reporting.
+ */
+function loadOverrides(): Map<string, { key: string; value: NameOverride }> {
+  const map = new Map<string, { key: string; value: NameOverride }>();
+  const file = resolve(ROOT, "scripts", "site-names.json");
+  if (!existsSync(file)) return map;
+  const data = JSON.parse(readFileSync(file, "utf8")) as Record<string, NameOverride>;
+  for (const [key, value] of Object.entries(data)) map.set(normalizeKey(key), { key, value });
+  return map;
+}
+
+/**
+ * Converts Datto sites to config sites: splits names, applies name overrides, builds unique
+ * case-insensitive ids from the short name (a numeric suffix is added on collision), and sorts by
+ * short name.
  *
  * @param sites - Sites from the API.
+ * @param overrides - Name fixes from {@link loadOverrides}; entries that match are removed from it.
  * @returns Sites ready for `config.json`.
  */
-function toConfigSites(sites: DattoSite[]): SiteConfig[] {
+export function toConfigSites(
+  sites: DattoSite[],
+  overrides: Map<string, { key: string; value: NameOverride }> = new Map(),
+): SiteConfig[] {
   const used = new Set<string>();
   const out: SiteConfig[] = [];
 
@@ -104,7 +147,23 @@ function toConfigSites(sites: DattoSite[]): SiteConfig[] {
     if (SYSTEM_SITES.has(name.toLowerCase())) continue;
 
     //=-- A site with no name falls back to its UID so it is still selectable and unique.
-    const { shortName, displayName } = splitName(name || `Site ${site.uid.slice(0, 8)}`);
+    const full = name || `Site ${site.uid.slice(0, 8)}`;
+    let { shortName, displayName } = splitName(full);
+
+    //=-- Full-name match first; a short-name match only for sites with no delimiter.
+    const fullKey = normalizeKey(full);
+    const codeKey = normalizeKey(shortName);
+    const noDelimiter = shortName === displayName;
+    const matchKey = overrides.has(fullKey) ? fullKey : noDelimiter && overrides.has(codeKey) ? codeKey : null;
+    if (matchKey) {
+      const value = overrides.get(matchKey)!.value;
+      overrides.delete(matchKey);
+      if (typeof value === "string") displayName = value;
+      else {
+        displayName = value.displayName;
+        shortName = value.shortName ?? shortName;
+      }
+    }
 
     const base = shortName.replace(/[^A-Za-z0-9-]+/g, "").toUpperCase() || "SITE";
     let id = base;
@@ -275,13 +334,20 @@ async function main(): Promise<void> {
   const token = await getToken(apiUrl, key, secret);
 
   console.log("Fetching sites ...");
-  const sites = toConfigSites(await fetchSites(apiUrl, token));
+  const overrides = loadOverrides();
+  const total = overrides.size;
+  const sites = toConfigSites(await fetchSites(apiUrl, token), overrides);
+  if (total) console.log(`Applied ${total - overrides.size} of ${total} name fix(es) from scripts/site-names.json.`);
+  for (const { key } of overrides.values()) console.warn(`  No site matched name fix: ${key}`);
 
   writeFileSync(out, JSON.stringify({ sites }, null, 2) + "\n", "utf8");
   console.log(`Wrote ${sites.length} site(s) to ${out}`);
 }
 
-main().catch((e: unknown) => {
-  console.error(`Error: ${e instanceof Error ? e.message : String(e)}`);
-  process.exit(1);
-});
+//=-- Only run when executed directly, so the helpers can be imported for checks.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main().catch((e: unknown) => {
+    console.error(`Error: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(1);
+  });
+}
