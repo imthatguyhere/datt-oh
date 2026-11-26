@@ -71,6 +71,8 @@ datt-oh.exe /config=https://example.com/datto-config.json
 
 Shows the main window (titled from `app.title` in the config, grows automatically if its content outgrows it but never shrinks on its own, and frameless: drag any background area to move it, and use the green/yellow/red buttons at the top right to maximize, minimize, or close; `F11` toggles maximize, and `Esc` restores the window while maximized) with a site dropdown (type to fuzzy-filter the list; starting on a `----------` placeholder, so the Install Agent button stays disabled until a valid site is chosen; `defaults.siteId` pre-selects a site) and status on the left and a live log panel on the right. Clicking **Install Agent** asks for confirmation (yes/no) before anything is downloaded; once the file is downloaded it is verified (SHA-256 hash, the optional `installer.sha256` checksum, and the Authenticode signature) and a second yes/no dialog shows the results (with warnings for an unsigned installer or a skipped checksum) before the installer is run. A hash that contradicts a configured `installer.sha256` aborts the install. Answering No at either step cancels cleanly (a downloaded file is kept on disk).
 
+On startup, if an installer already exists at the save path (`/savepath` override, else `installer.defaultSavePath`), it is verified and a dialog shows its details (path, size, SHA-256, signature) and asks whether to run it. Answering No then asks whether to delete it (**Keep it** leaves the file untouched). A file whose hash contradicts `installer.sha256` is not offered for install, only for deletion.
+
 ### Silent mode
 
 ```sh
