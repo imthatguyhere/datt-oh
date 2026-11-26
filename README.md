@@ -98,6 +98,14 @@ Both `/arg` and `-arg` styles are supported, with `=value` or space-separated va
 /logPath="C:\ProgramData\datt-oh\logs\installer.log"
 ```
 
+## Generating the site list
+
+`npm run sites` (alias `npm run configurator`) pulls every site from the Datto RMM API and writes `sites.json` in the repo root, then prints the file's full path. It is a developer tool and is not part of the app; the output is gitignored because it holds real customer data. Copy its `sites` array into `config.json`.
+
+Set `DATTO_API_KEY` and `DATTO_API_SECRET` in the environment or `.env` (create the keys in Datto RMM under Setup > Users > your user > API Access). The platform comes from `--platform`, `PLATFORM`, or `installer.platform` in `config.json`; the API is `https://<platform>-api.centrastage.net`. `--out <file>` (or `SITES_OUT`) changes the output path. Requires Node 22.18 or newer, which runs the TypeScript script directly.
+
+Datto sites only have a name, so a name is split into short name and display name at its first spaced dash (` - `, ` – `, ` — `), colon, or semicolon (`77FORT - Fortress Security`, `77FORT: Fortress Security`); an unspaced hyphen like `Coca-Cola` is not a delimiter. A name with no delimiter is used as both. Ids come from the short name (a `-2` suffix is added on collision), sites are sorted by short name, the built-in "Deleted Devices" site is skipped, and a site with no name is called `Site <first 8 chars of its UID>`. Review the result before using it.
+
 ## Output
 
 - **UI mode** logs progress to an on-screen log panel.
