@@ -361,15 +361,11 @@ export default function SiteSelect() {
       {/*=-- Always shown; falls back to a dash when no site is selected. */}
       <div className="mt-4 space-y-1 text-sm">
         <div className="flex justify-between gap-2">
-          <span className="text-base-content/60">Short name</span>
-          {selectedSite ? (
-            <ShortNameBadge name={selectedSite.shortName} />
-          ) : (
-            <span className="font-mono">—</span>
-          )}
+          <span className="text-base-content/60">Site ID</span>
+          <span className="font-mono">{selectedSite?.id ?? "—"}</span>
         </div>
         <div className="flex justify-between gap-2">
-          <span className="text-base-content/60">Site UID</span>
+          <span className="text-base-content/60">Datto UID</span>
           <code className="font-mono text-accent">
             {selectedSite?.siteUid ?? "—"}
           </code>
