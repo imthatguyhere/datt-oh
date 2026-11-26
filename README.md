@@ -69,7 +69,7 @@ datt-oh.exe
 datt-oh.exe /config=https://example.com/datto-config.json
 ```
 
-Shows the main window (titled from `app.title` in the config, automatically sized to fit its content, and frameless: drag any background area to move it, and use the green/yellow/red buttons at the top right to maximize, minimize, or close; `F11` toggles maximize, and `Esc` restores the window while maximized) with a site dropdown (starting on a `----------` placeholder, so the Install Agent button stays disabled until a valid site is chosen; `defaults.siteId` pre-selects a site) and status on the left and a live log panel on the right.
+Shows the main window (titled from `app.title` in the config, automatically sized to fit its content, and frameless: drag any background area to move it, and use the green/yellow/red buttons at the top right to maximize, minimize, or close; `F11` toggles maximize, and `Esc` restores the window while maximized) with a site dropdown (type to fuzzy-filter the list; starting on a `----------` placeholder, so the Install Agent button stays disabled until a valid site is chosen; `defaults.siteId` pre-selects a site) and status on the left and a live log panel on the right.
 
 ### Silent mode
 
