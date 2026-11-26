@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -23,7 +24,9 @@ import * as api from "../lib/tauri";
 export type InstallPhase =
   | "loading"
   | "ready"
+  | "confirming"
   | "downloading"
+  | "verifying"
   | "running"
   | "complete"
   | "failed";
@@ -43,6 +46,20 @@ export interface LogEntry {
   message: string;
 }
 
+/**
+ * A yes/no question shown in a modal dialog.
+ */
+export interface ConfirmRequest {
+  title: string;
+  message: string;
+  /** Label/value rows shown under the message. */
+  details?: { label: string; value: string }[];
+  /** Highlighted warnings (e.g. an unsigned installer), shown above the details. */
+  warnings?: string[];
+  confirmLabel: string;
+  cancelLabel: string;
+}
+
 let nextLogId = 1;
 
 /**
@@ -58,6 +75,8 @@ interface InstallerContextValue {
   plan: InstallPlan | null;
   result: InstallResult | null;
   logs: LogEntry[];
+  confirm: ConfirmRequest | null;
+  answerConfirm: (yes: boolean) => void;
   selectSite: (id: string) => void;
   install: () => Promise<void>;
   reset: () => void;
@@ -86,6 +105,33 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
   const [plan, setPlan] = useState<InstallPlan | null>(null);
   const [result, setResult] = useState<InstallResult | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
+  const confirmResolver = useRef<((yes: boolean) => void) | null>(null);
+
+  /**
+   * Shows a yes/no dialog and waits for the answer.
+   *
+   * @param request - The question to show.
+   * @returns `true` for yes, `false` for no.
+   */
+  const ask = useCallback((request: ConfirmRequest) => {
+    return new Promise<boolean>((resolve) => {
+      confirmResolver.current = resolve;
+      setConfirm(request);
+    });
+  }, []);
+
+  /**
+   * Answers the open dialog and closes it.
+   *
+   * @param yes - The user's answer.
+   */
+  const answerConfirm = useCallback((yes: boolean) => {
+    const resolve = confirmResolver.current;
+    confirmResolver.current = null;
+    setConfirm(null);
+    resolve?.(yes);
+  }, []);
 
   /**
    * Appends a timestamped entry to the on-screen log.
@@ -178,8 +224,8 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
-   * Runs the install: build the plan, download the installer, run it, and update the phase
-   * and log as each step completes or fails.
+   * Runs the install: build the plan, ask to proceed, download, verify, ask again, then run it,
+   * updating the phase and log as each step completes, is declined, or fails.
    */
   const install = useCallback(async () => {
     if (!selectedSiteId) {
@@ -204,13 +250,80 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
       addLog("info", `Installer URL: ${p.installerUrl}`);
       addLog("info", `Save path: ${p.savePath}`);
 
-      //=-- 2. Download.
+      //=-- 2. Confirm before anything is downloaded.
+      setPhase("confirming");
+      const startOk = await ask({
+        title: "Install the Datto RMM agent?",
+        message:
+          "The installer will be downloaded and verified, and you will be asked again before it runs.",
+        details: [
+          { label: "Site", value: `${p.selectedSite.shortName} — ${p.selectedSite.displayName}` },
+          { label: "Site UID", value: p.selectedSite.siteUid },
+          { label: "Download from", value: p.installerUrl },
+        ],
+        confirmLabel: "Yes, download",
+        cancelLabel: "No",
+      });
+      if (!startOk) {
+        addLog("info", "Install cancelled before download.");
+        setPhase("ready");
+        return;
+      }
+
+      //=-- 3. Download.
       setPhase("downloading");
       addLog("info", "Downloading installer...");
       const dl = await api.downloadInstaller(p.installerUrl, p.savePath);
       addLog("success", `Downloaded ${dl.fileSize} bytes in ${dl.durationMs} ms`);
 
-      //=-- 3. Run.
+      //=-- 4. Verify the downloaded file (hash, configured checksum, signature).
+      setPhase("verifying");
+      addLog("info", "Verifying installer...");
+      const v = await api.verifyInstaller(p.savePath, config?.installer.sha256);
+      addLog("info", `SHA-256: ${v.sha256}`);
+      addLog(
+        v.signatureStatus === "Valid" ? "success" : "info",
+        `Signature: ${v.signatureStatus}${v.signer ? ` (${v.signer})` : ""}`,
+      );
+      if (!v.passed) {
+        throw new Error(`Installer SHA-256 ${v.sha256} does not match the configured value.`);
+      }
+      if (v.sha256Matches) addLog("success", "SHA-256 matches the configured value.");
+
+      //=-- 5. Confirm before running.
+      const warnings: string[] = [];
+      if (v.signatureStatus !== "Valid") {
+        warnings.push(
+          v.signatureStatus === "NotChecked"
+            ? "The digital signature could not be checked."
+            : `The digital signature is not valid (${v.signatureStatus}).`,
+        );
+      }
+      if (v.sha256Matches === null) {
+        warnings.push("No expected SHA-256 is configured, so the hash was not compared.");
+      }
+      setPhase("confirming");
+      const runOk = await ask({
+        title: "Run the installer?",
+        message: "The download was verified. Run it now?",
+        warnings,
+        details: [
+          { label: "File", value: p.savePath },
+          { label: "Size", value: `${v.fileSize.toLocaleString()} bytes` },
+          { label: "SHA-256", value: v.sha256 },
+          { label: "Signature", value: v.signatureStatus },
+          ...(v.signer ? [{ label: "Signed by", value: v.signer }] : []),
+        ],
+        confirmLabel: "Yes, install",
+        cancelLabel: "No",
+      });
+      if (!runOk) {
+        addLog("info", `Install cancelled before running. The downloaded file was kept at ${p.savePath}`);
+        setPhase("ready");
+        return;
+      }
+
+      //=-- 6. Run.
       setPhase("running");
       addLog("info", "Running installer...");
       const successCodes = config?.installer.successExitCodes ?? [0, 3010];
@@ -236,7 +349,7 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
       setError(msg);
       setPhase("failed");
     }
-  }, [selectedSiteId, config, addLog]);
+  }, [selectedSiteId, config, addLog, ask]);
 
   /**
    * Returns to the ready state, clearing the plan, result and error.
@@ -259,6 +372,8 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
       plan,
       result,
       logs,
+      confirm,
+      answerConfirm,
       selectSite,
       install,
       reset,
@@ -273,6 +388,8 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
       plan,
       result,
       logs,
+      confirm,
+      answerConfirm,
       selectSite,
       install,
       reset,
