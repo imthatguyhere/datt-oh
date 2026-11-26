@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="warpburple" data-tauri-drag-region>
+<html lang="en" data-theme="warpburple">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,7 +7,7 @@
     <title>datt-oh</title>
   </head>
   <body data-tauri-drag-region>
-    <!-- html/body/#root are drag regions so extra space revealed by resizing still drags the window -->
+    <!-- body/#root are drag regions so extra space still drags the window. <html> is deliberately NOT one: the page scrollbar belongs to <html>, and a mousedown on it would otherwise start a window drag. -->
     <div id="root" data-tauri-drag-region></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
