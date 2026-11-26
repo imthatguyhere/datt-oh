@@ -1,4 +1,11 @@
+@import "@fontsource-variable/m-plus-2";
+@import "@fontsource-variable/m-plus-1-code";
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "M PLUS 2 Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "M PLUS 1 Code Variable", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
 @plugin "daisyui" {
   themes: false;
 }
@@ -57,7 +64,7 @@ body,
 body {
   margin: 0;
   color: var(--color-base-content);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 

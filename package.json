@@ -15,6 +15,8 @@
     "configurator": "node scripts/sites-generator.ts"
   },
   "dependencies": {
+    "@fontsource-variable/m-plus-1-code": "^5.3.1",
+    "@fontsource-variable/m-plus-2": "^5.3.1",
     "@tauri-apps/api": "^2.12.5",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
