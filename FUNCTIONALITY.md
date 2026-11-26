@@ -154,3 +154,7 @@ DTOs for the Tauri boundary: `StartupContext`, `InstallRequest`, `InstallPlan`, 
 | installed_name | osd_description    | detection function                                              |
 | -------------- | ------------------ | --------------------------------------------------------------- |
 | Datto agent    | Datto RMM agent    | Site-specific installer download (`siteUid` in URL) + execution |
+
+## Developer tooling: `scripts/sites-generator.ts`
+
+Run by `npm run sites` / `npm run configurator` (`node scripts/sites-generator.ts`; Node runs TypeScript directly). Not part of the app. Flow: load `.env`, resolve platform (`--platform` > `PLATFORM` > `installer.platform`), `DATTO_API_KEY`/`DATTO_API_SECRET` and output path (`--out` > `SITES_OUT` > `sites.json`); `getToken` POSTs a password grant to `/auth/oauth/token` using Datto's public OAuth client; `fetchSites` pages through `GET /api/v2/account/sites` (`max=250`, following `pageDetails.nextPageUrl`); `toConfigSites` skips system sites (`Deleted Devices`), splits names with `splitName` (first spaced dash, colon or semicolon; no delimiter means the name is both short and display name), makes unique case-insensitive ids, sorts by short name; the result is written as `{ "sites": [...] }` and the absolute path is printed. Output is gitignored.
