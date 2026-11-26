@@ -5,15 +5,17 @@
  * Run with `npm run sites` (or `npm run configurator`). This is a developer tool and is not
  * part of the app. It needs Node 22.18+ (runs TypeScript directly) and read access to the API.
  *
- * Settings (CLI flag > environment > `.env` > `config.json`):
- * - `DATTO_API_KEY` / `DATTO_API_SECRET` (required): the account's API keys. Create them in
- *   Datto RMM under Setup > Users > (your user) > API Access.
- * - `--platform` / `PLATFORM`: platform subdomain, e.g. `vidal` (falls back to
- *   `installer.platform` in `config.json`). The API lives at `https://<platform>-api.centrastage.net`.
+ * Settings (CLI flag > environment > `.env` > prompt). Anything not set is asked for in the terminal:
+ * - `DATTO_API_KEY` / `DATTO_API_SECRET`: the account's API keys. Create them in Datto RMM under
+ *   Setup > Users > (your user) > API Access. The secret is typed hidden.
+ * - `--platform` / `PLATFORM`: either the platform short name (`vidal`, which becomes
+ *   `https://vidal-api.centrastage.net`) or a full `http(s)://` API URL, which is used as given.
+ *   When not set, it is asked for, with `installer.platform` from `config.json` as the default.
  * - `--out` / `SITES_OUT`: output file (default `sites.json` in the repo root).
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 
 /** A site as returned by the Datto RMM API (only the fields used here). */
@@ -164,6 +166,86 @@ async function fetchSites(apiUrl: string, token: string): Promise<DattoSite[]> {
   return sites;
 }
 
+/**
+ * Asks a question in the terminal.
+ *
+ * Secret answers are read in raw mode and not echoed. Fails instead of hanging when there is no
+ * interactive terminal to answer on.
+ *
+ * @param question - Prompt text.
+ * @param options.secret - Hide what is typed.
+ * @param options.defaultValue - Value used when the answer is blank (shown in brackets).
+ * @returns The trimmed answer, or the default when blank.
+ */
+async function ask(
+  question: string,
+  options: { secret?: boolean; defaultValue?: string } = {},
+): Promise<string> {
+  if (!process.stdin.isTTY) {
+    throw new Error(`"${question}" is not set and there is no terminal to ask on. Set it in .env or the environment.`);
+  }
+  const prompt = `${question}${options.defaultValue ? ` [${options.defaultValue}]` : ""}: `;
+
+  let answer: string;
+  if (options.secret) {
+    process.stdout.write(prompt);
+    answer = await readHidden();
+  } else {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    answer = await rl.question(prompt);
+    rl.close();
+  }
+  return answer.trim() || options.defaultValue || "";
+}
+
+/**
+ * Reads a line from the terminal without echoing it. Supports paste and backspace; Ctrl+C aborts.
+ *
+ * @returns The typed line.
+ */
+function readHidden(): Promise<string> {
+  return new Promise((resolveLine, reject) => {
+    const stdin = process.stdin;
+    let line = "";
+    const finish = (): void => {
+      stdin.setRawMode(false);
+      stdin.pause();
+      stdin.off("data", onData);
+      process.stdout.write("\n");
+    };
+    const onData = (chunk: Buffer): void => {
+      for (const ch of chunk.toString("utf8")) {
+        if (ch === "\r" || ch === "\n") {
+          finish();
+          return resolveLine(line);
+        }
+        if (ch === "\u0003") {
+          finish();
+          return reject(new Error("Cancelled."));
+        }
+        if (ch === "\b" || ch === "\u007f") line = line.slice(0, -1);
+        else line += ch;
+      }
+    };
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.on("data", onData);
+  });
+}
+
+/**
+ * Turns a platform answer into an API base URL.
+ *
+ * @param value - A platform short name (`vidal`) or a full `http(s)://` URL.
+ * @returns The URL: used as given (minus trailing slashes) if it is one, otherwise
+ *   `https://<name>-api.centrastage.net`.
+ */
+function resolveApiUrl(value: string): string {
+  const v = value.trim();
+  if (/^https?:\/\//i.test(v)) return v.replace(/\/+$/, "");
+  return `https://${v}-api.centrastage.net`;
+}
+
 /** Entry point: resolves settings, fetches the sites, and writes the output file. */
 async function main(): Promise<void> {
   const envFile = resolve(ROOT, ".env");
@@ -176,15 +258,19 @@ async function main(): Promise<void> {
       .installer?.platform;
   }
 
-  const platform = firstNonBlank(flag("platform"), process.env.PLATFORM, configPlatform);
-  const key = firstNonBlank(process.env.DATTO_API_KEY);
-  const secret = firstNonBlank(process.env.DATTO_API_SECRET);
   const out = resolve(ROOT, firstNonBlank(flag("out"), process.env.SITES_OUT) ?? "sites.json");
 
-  if (!platform) throw new Error("No platform. Use --platform, PLATFORM, or installer.platform in config.json.");
-  if (!key || !secret) throw new Error("Set DATTO_API_KEY and DATTO_API_SECRET (in the environment or .env).");
+  //=-- Anything not already set is asked for. The platform always defaults to the config's.
+  const platform =
+    firstNonBlank(flag("platform"), process.env.PLATFORM) ??
+    (await ask("Platform short name or API URL", { defaultValue: configPlatform }));
+  const key = firstNonBlank(process.env.DATTO_API_KEY) ?? (await ask("API key"));
+  const secret = firstNonBlank(process.env.DATTO_API_SECRET) ?? (await ask("API secret", { secret: true }));
 
-  const apiUrl = `https://${platform}-api.centrastage.net`;
+  if (!platform) throw new Error("No platform given.");
+  if (!key || !secret) throw new Error("An API key and secret are required.");
+
+  const apiUrl = resolveApiUrl(platform);
   console.log(`Authenticating with ${apiUrl} ...`);
   const token = await getToken(apiUrl, key, secret);
 
