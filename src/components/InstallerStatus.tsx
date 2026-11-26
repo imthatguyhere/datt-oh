@@ -39,15 +39,19 @@ export default function InstallerStatus() {
   //=-- While ready with the dropdown on its placeholder, prompt for a site instead of saying "Ready".
   const needsSite = phase === "ready" && !selectedSite;
 
+  //=-- The header's bottom margin only belongs when detail rows follow; otherwise it throws the title/badge off-centre.
+  const hasDetails = Boolean(plan || result);
+
   return (
     <section className="glow-panel card rounded-box p-5">
-      <div className="mb-3 flex items-center justify-between">
+      <div className={`flex items-center justify-between ${hasDetails ? "mb-3" : ""}`}>
         <h2 className="text-lg font-semibold">Status</h2>
         <span className={`badge font-bold ${needsSite ? "badge-info" : (phaseBadge[phase] ?? "badge-neutral")}`}>
           {needsSite ? "Select a Site" : (phaseLabel[phase] ?? phase)}
         </span>
       </div>
 
+      {hasDetails && (
       <div className="space-y-1 text-sm">
         {plan && (
           <>
@@ -69,6 +73,7 @@ export default function InstallerStatus() {
           </div>
         )}
       </div>
+      )}
     </section>
   );
 }
