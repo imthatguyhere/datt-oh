@@ -17,11 +17,13 @@ import {
 /**
  * Top-level layout: header, site/status column, log panel, action row, and footer.
  *
- * Also owns the native-window behaviour: it keeps the window as tall as the content,
+ * Also owns the native-window behaviour: it grows the window if the content outgrows it (never shrinks),
  * blocks drag-to-unmaximize while maximized, and handles the F11 / Esc shortcuts.
  *
  * The Site + Status column sets the row height; the log panel is absolutely positioned
  * in its cell (large screens) so it stretches to exactly that height.
+ *
+ * The root fills the window height and the footer uses `mt-auto`, so it stays at the bottom.
  *
  * @returns The page layout.
  */
@@ -30,7 +32,7 @@ export default function AppShell() {
   const rootRef = useRef<HTMLDivElement>(null);
 
   //=-- Keep the native window exactly as tall as the content (re-fits as the log grows or text wraps).
-  //=-- The root must not stretch to the window height (no min-h-screen) or this would feed back.
+  //=-- The root is min-h-screen so the footer sticks to the bottom; that is safe because fitting only grows.
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
@@ -101,7 +103,7 @@ export default function AppShell() {
   }, []);
 
   return (
-    <div ref={rootRef} data-tauri-drag-region className="flex flex-col px-4 py-6 sm:px-8">
+    <div ref={rootRef} data-tauri-drag-region className="flex min-h-screen flex-col px-4 py-6 sm:px-8">
       <Header />
 
       {phase === "loading" ? (
@@ -142,7 +144,7 @@ export default function AppShell() {
 
       <ConfirmDialog />
 
-      <footer data-tauri-drag-region className="mx-auto w-full max-w-6xl border-t border-base-300 pt-4 text-center text-xs text-base-content/50">
+      <footer data-tauri-drag-region className="mx-auto mt-auto w-full max-w-6xl border-t border-base-300 pt-4 text-center text-xs text-base-content/50">
         By: Tyler Morrison (aka Imthatguyhere | ITGH)
       </footer>
     </div>

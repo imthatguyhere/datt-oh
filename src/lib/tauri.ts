@@ -39,7 +39,8 @@ export async function fitWindowHeight(height: number): Promise<void> {
     if (await win.isMaximized()) return;
     const capped = Math.min(Math.ceil(height), window.screen.availHeight);
     //=-- Grow only: never shrink, so the window does not jump around as content changes.
-    if (capped <= window.innerHeight) return;
+    //=-- The 1px slack avoids a grow loop from fractional heights now that the root is min-h-screen.
+    if (capped <= window.innerHeight + 1) return;
     await win.setSize(new LogicalSize(window.innerWidth, capped));
   } catch {
     //=-- Not running inside Tauri; nothing to resize.
