@@ -1,6 +1,6 @@
 import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
-import { currentMonitor, getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
+import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import type {
   AppConfig,
   DownloadResult,
@@ -108,53 +108,6 @@ export async function watchMaximized(onChange: (maximized: boolean) => void): Pr
   } catch (e) {
     console.warn("watchMaximized failed:", e);
     return () => {};
-  }
-}
-
-/**
- * How far (in CSS pixels) the window's client area extends past the monitor's work area on each
- * side. A maximized frameless window can overshoot (e.g. under the taskbar), hiding anything drawn
- * at that edge. Uses the native window and monitor rectangles, not the browser's screen values.
- * Returns zeros outside Tauri or on failure.
- *
- * @returns The overshoot per side, never negative.
- */
-export async function getWorkAreaOvershoot(): Promise<{
-  top: number;
-  right: number;
-  bottom: number;
-  left: number;
-}> {
-  const none = { top: 0, right: 0, bottom: 0, left: 0 };
-  try {
-    const win = getCurrentWindow();
-    const monitor = await currentMonitor();
-    if (!monitor) {
-      console.warn("[datt-oh] work-area overshoot: no current monitor reported");
-      return none;
-    }
-    const [pos, size, scale] = await Promise.all([
-      win.innerPosition(),
-      win.innerSize(),
-      win.scaleFactor(),
-    ]);
-    const area = monitor.workArea;
-    const out = {
-      left: Math.max(0, area.position.x - pos.x) / scale,
-      top: Math.max(0, area.position.y - pos.y) / scale,
-      right: Math.max(0, pos.x + size.width - (area.position.x + area.size.width)) / scale,
-      bottom: Math.max(0, pos.y + size.height - (area.position.y + area.size.height)) / scale,
-    };
-    console.log("[datt-oh] work-area overshoot (CSS px):", out, {
-      windowPos: pos,
-      windowSize: size,
-      workArea: area,
-      scale,
-    });
-    return out;
-  } catch (e) {
-    console.warn("[datt-oh] work-area overshoot failed:", e);
-    return none;
   }
 }
 

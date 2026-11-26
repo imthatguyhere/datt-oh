@@ -9,7 +9,6 @@ import ConfirmDialog from "./ConfirmDialog";
 import { useInstaller } from "../state/installerStore";
 import {
   fitWindowHeight,
-  getWorkAreaOvershoot,
   restoreIfMaximized,
   toggleMaximizeWindow,
   watchFocused,
@@ -35,29 +34,6 @@ export default function AppShell() {
   const [scrolled, setScrolled] = useState(false);
   const [focused, setFocused] = useState(true);
   const [isMaximized, setIsMaximized] = useState(false);
-  const [borderInset, setBorderInset] = useState({ top: 0, right: 0, bottom: 0, left: 0 });
-
-  //=-- A maximized frameless window can extend past the monitor's work area (e.g. under the taskbar),
-  //=-- hiding the border's bottom edge. Inset the border by however far the window overshoots (read
-  //=-- from the native window/monitor rectangles; also logged to the dev console).
-  useEffect(() => {
-    if (!isMaximized) {
-      setBorderInset({ top: 0, right: 0, bottom: 0, left: 0 });
-      return;
-    }
-    let cancelled = false;
-    const update = () => {
-      void getWorkAreaOvershoot().then((o) => {
-        if (!cancelled) setBorderInset(o);
-      });
-    };
-    update();
-    window.addEventListener("resize", update);
-    return () => {
-      cancelled = true;
-      window.removeEventListener("resize", update);
-    };
-  }, [isMaximized]);
 
   //=-- Track window focus to draw the active-window border.
   useEffect(() => {
@@ -208,15 +184,8 @@ export default function AppShell() {
           the corners of undecorated windows (8px), so the frame is rounded to match unless maximized. */}
       <div
         aria-hidden="true"
-        style={{
-          //=-- While maximized, keep the 1px line one pixel inside every edge: with fractional display
-          //=-- scaling the outermost row/column can be clipped, which hid the bottom edge.
-          top: borderInset.top + (isMaximized ? 1 : 0),
-          right: borderInset.right + (isMaximized ? 1 : 0),
-          bottom: borderInset.bottom + (isMaximized ? 1 : 0),
-          left: borderInset.left + (isMaximized ? 1 : 0),
-        }}
-        className={`pointer-events-none fixed z-[60] border border-primary/50 shadow-[inset_0_0_10px_rgba(124,58,237,0.15)] transition-opacity duration-150 ${
+        style={isMaximized ? { inset: 1 } : undefined}
+        className={`pointer-events-none fixed inset-0 z-[60] border border-primary/50 shadow-[inset_0_0_10px_rgba(124,58,237,0.15)] transition-opacity duration-150 ${
           isMaximized ? "" : "rounded-lg"
         } ${focused ? "opacity-100" : "opacity-0"}`}
       />
