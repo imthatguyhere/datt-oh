@@ -26,5 +26,12 @@ dotenvy = "0.15"
 thiserror = "2"
 
 [features]
-# This feature is used for production builds or when a dev server is not specified.
+#=-- This feature is used for production builds or when a dev server is not specified.
 custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z" #=-- or "s" if you have a lot of loops
+panic = "abort"
+strip = true #=-- removes debug symbols
