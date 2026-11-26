@@ -29,7 +29,7 @@ export interface InstallerSection {
   defaultMode?: AppMode;
   /** Exit codes treated as success (default 0 and 3010). */
   successExitCodes?: number[];
-  /** Intended expected SHA-256 of the installer. Parsed but not currently verified. */
+  /** Expected SHA-256 of the installer; when set, a downloaded file with a different hash is rejected. */
   sha256?: string;
 }
 
@@ -114,6 +114,21 @@ export interface DownloadResult {
   fileSize: number;
   durationMs: number;
   success: boolean;
+}
+
+/**
+ * Outcome of verifying a downloaded installer.
+ */
+export interface VerifyResult {
+  fileSize: number;
+  sha256: string;
+  /** Whether the hash equals `installer.sha256`; `null` when none is configured. */
+  sha256Matches: boolean | null;
+  /** Authenticode status (`Valid`, `NotSigned`, ...) or `NotChecked`. */
+  signatureStatus: string;
+  signer: string | null;
+  /** `false` only when the file is unusable or a configured hash does not match. */
+  passed: boolean;
 }
 
 /**
