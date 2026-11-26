@@ -11,6 +11,7 @@ import {
   fitWindowHeight,
   restoreIfMaximized,
   toggleMaximizeWindow,
+  watchFocused,
   watchMaximized,
 } from "../lib/tauri";
 
@@ -31,6 +32,22 @@ export default function AppShell() {
   const { phase } = useInstaller();
   const rootRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
+  const [focused, setFocused] = useState(true);
+  const [isMaximized, setIsMaximized] = useState(false);
+
+  //=-- Track window focus to draw the active-window border.
+  useEffect(() => {
+    let cancelled = false;
+    let unwatch: () => void = () => {};
+    void watchFocused(setFocused).then((un) => {
+      if (cancelled) un();
+      else unwatch = un;
+    });
+    return () => {
+      cancelled = true;
+      unwatch();
+    };
+  }, []);
 
   //=-- Give the sticky header bar a background only once content scrolls under it; at rest it is
   //=-- transparent so it does not draw a hard edge across the page gradient.
@@ -63,6 +80,7 @@ export default function AppShell() {
 
     void watchMaximized((m) => {
       maximized = m;
+      setIsMaximized(m);
     }).then((un) => {
       if (cancelled) un();
       else unwatch = un;
@@ -161,6 +179,15 @@ export default function AppShell() {
       )}
 
       <ConfirmDialog />
+
+      {/*=-- Subtle blurple frame while the window is focused (the window is frameless). Windows 11 rounds
+          the corners of undecorated windows (8px), so the frame is rounded to match unless maximized. */}
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none fixed inset-0 z-[60] border border-primary/50 shadow-[inset_0_0_10px_rgba(124,58,237,0.15)] transition-opacity duration-150 ${
+          isMaximized ? "" : "rounded-lg"
+        } ${focused ? "opacity-100" : "opacity-0"}`}
+      />
 
       <footer data-tauri-drag-region className="mx-auto mt-auto w-full max-w-6xl border-t border-base-300 pt-4 text-center text-xs text-base-content/50">
         By: Tyler Morrison (aka Imthatguyhere | ITGH)
