@@ -101,7 +101,7 @@ Tauri `#[tauri::command]` surface.
 
 - `parse_args` — Windows-style arg tokenizer (key/value, flags, quoted values).
 - `resolve_startup` — merges CLI and env into `StartupArgs`.
-- `default_config_source` — first existing of `../config.json`, `config.json`, `./config.json`.
+- `default_config_source` — first existing of `config.json` next to the executable, `config.json` in the working directory, then `../config.json` (for `tauri dev`, which runs from `src-tauri/`).
 - `default_log_path` — `%ProgramData%\datt-oh\logs\installer.log`.
 
 ### `config_loader.rs`
