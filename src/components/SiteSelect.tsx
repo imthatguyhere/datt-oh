@@ -138,14 +138,16 @@ export default function SiteSelect() {
       .map((r) => r.o);
   }, [options, query]);
 
-  //=-- Close when clicking outside the dropdown.
+  //=-- Close when clicking outside the dropdown. Listens in the capture phase on `window` so drag
+  //=-- regions (background, header) cannot swallow the event: `AppShell` stops propagation of
+  //=-- drag-region mouse-downs while maximized, and Tauri's window drag takes over otherwise.
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
+    window.addEventListener("mousedown", onDown, true);
+    return () => window.removeEventListener("mousedown", onDown, true);
   }, [open]);
 
   //=-- Keep the highlighted option visible while navigating with the keyboard.
