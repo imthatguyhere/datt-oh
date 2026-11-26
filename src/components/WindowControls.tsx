@@ -26,7 +26,12 @@ function Control({ label, color, glyph, onClick }: ControlProps) {
       onClick={onClick}
       className={`group flex h-3.5 w-3.5 items-center justify-center rounded-full ${color} transition-[filter] hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary`}
     >
-      <span className="text-[10px] leading-none font-bold text-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+      {/*=-- Text glyphs (+, –, ×) sit low and left of true centre in the font, so nudge them up/right; the SVG caret is already centred. */}
+      <span
+        className={`text-[10px] leading-none font-bold text-black/60 opacity-0 transition-opacity group-hover:opacity-100 ${
+          typeof glyph === "string" ? "-translate-y-px translate-x-[0.5px]" : ""
+        }`}
+      >
         {glyph}
       </span>
     </button>
