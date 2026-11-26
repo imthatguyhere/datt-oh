@@ -199,6 +199,25 @@ export function verifyInstaller(savePath: string, expectedSha256?: string): Prom
 }
 
 /**
+ * Reports whether an installer file already exists at the given path.
+ *
+ * @param savePath - Path to check.
+ * @returns `true` if a regular file exists there.
+ */
+export function installerExists(savePath: string): Promise<boolean> {
+  return invoke<boolean>("installer_exists", { savePath });
+}
+
+/**
+ * Deletes a leftover installer file.
+ *
+ * @param savePath - Path of the installer to delete.
+ */
+export function deleteInstaller(savePath: string): Promise<void> {
+  return invoke<void>("delete_installer", { savePath });
+}
+
+/**
  * Runs a previously downloaded installer.
  *
  * @param savePath - Path of the installer executable.

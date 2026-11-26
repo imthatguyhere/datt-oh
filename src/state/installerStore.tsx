@@ -14,6 +14,7 @@ import type {
   InstallResult,
   SiteConfig,
   StartupContext,
+  VerifyResult,
 } from "../lib/types";
 import { extractErrorMessage } from "../lib/errors";
 import * as api from "../lib/tauri";
@@ -61,6 +62,44 @@ export interface ConfirmRequest {
 }
 
 let nextLogId = 1;
+
+/**
+ * Builds the warning lines shown in a run confirmation for a verified installer.
+ *
+ * @param v - The verification result.
+ * @returns Warning messages; empty when nothing needs flagging.
+ */
+function verifyWarnings(v: VerifyResult): string[] {
+  const warnings: string[] = [];
+  if (v.signatureStatus !== "Valid") {
+    warnings.push(
+      v.signatureStatus === "NotChecked"
+        ? "The digital signature could not be checked."
+        : `The digital signature is not valid (${v.signatureStatus}).`,
+    );
+  }
+  if (v.sha256Matches === null) {
+    warnings.push("No expected SHA-256 is configured, so the hash was not compared.");
+  }
+  return warnings;
+}
+
+/**
+ * Builds the detail rows shown in a confirmation for a verified installer.
+ *
+ * @param savePath - Path of the installer file.
+ * @param v - The verification result.
+ * @returns Label/value rows (file, size, hash, signature).
+ */
+function verifyDetails(savePath: string, v: VerifyResult): { label: string; value: string }[] {
+  return [
+    { label: "File", value: savePath },
+    { label: "Size", value: `${v.fileSize.toLocaleString()} bytes` },
+    { label: "SHA-256", value: v.sha256 },
+    { label: "Signature", value: v.signatureStatus },
+    ...(v.signer ? [{ label: "Signed by", value: v.signer }] : []),
+  ];
+}
 
 /**
  * Everything the installer context exposes to components.
@@ -151,6 +190,102 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
     setLogs((prev) => [...prev, entry]);
   }, []);
 
+  /**
+   * Runs the installer at `savePath` and records the outcome in the phase, result and log.
+   *
+   * @param savePath - Path of the installer executable.
+   * @param args - Command-line arguments for the installer.
+   * @param successCodes - Exit codes treated as success.
+   */
+  const runAt = useCallback(
+    async (savePath: string, args: string[], successCodes: number[]) => {
+      setPhase("running");
+      addLog("info", "Running installer...");
+      const res = await api.runInstaller(savePath, args, successCodes);
+      setResult(res);
+
+      if (res.success) {
+        const reboot = res.rebootRequired ? " — a reboot may be required" : "";
+        addLog(
+          "success",
+          `Installer finished successfully (exit code ${res.exitCode ?? "n/a"})${reboot}`,
+        );
+        setPhase("complete");
+      } else {
+        const msg = `Installer exited with code ${res.exitCode ?? "unknown"}.`;
+        addLog("error", msg);
+        setError(msg);
+        setPhase("failed");
+      }
+    },
+    [addLog],
+  );
+
+  /**
+   * Handles an installer left on disk from an earlier run: verifies it, shows its details, and
+   * asks to install it or (if declined) delete it. Declining both keeps the file. A file whose
+   * hash does not match the configured value is never offered for install, only for deletion.
+   * Does nothing when no save path is known or no file exists there.
+   *
+   * @param ctx - Startup context (save path override, extra installer args).
+   * @param cfg - The loaded config (default save path, expected hash, success codes).
+   * @param isCancelled - Reports whether the calling effect was cancelled.
+   */
+  const handleExistingInstaller = useCallback(
+    async (ctx: StartupContext, cfg: AppConfig, isCancelled: () => boolean) => {
+      const savePath = ctx.savePath ?? cfg.installer.defaultSavePath;
+      if (!savePath || !(await api.installerExists(savePath)) || isCancelled()) return;
+
+      addLog("info", `Found an existing installer at ${savePath}`);
+      setPhase("verifying");
+      const v = await api.verifyInstaller(savePath, cfg.installer.sha256);
+      if (isCancelled()) return;
+      addLog("info", `SHA-256: ${v.sha256}`);
+      addLog(
+        v.signatureStatus === "Valid" ? "success" : "info",
+        `Signature: ${v.signatureStatus}${v.signer ? ` (${v.signer})` : ""}`,
+      );
+
+      setPhase("confirming");
+      if (v.passed) {
+        const installOk = await ask({
+          title: "Installer already downloaded",
+          message: "An installer from an earlier run is on disk. Run it now?",
+          warnings: verifyWarnings(v),
+          details: verifyDetails(savePath, v),
+          confirmLabel: "Yes, install",
+          cancelLabel: "No",
+        });
+        if (installOk) {
+          const args = [...new Set(ctx.extraArgs)];
+          await runAt(savePath, args, cfg.installer.successExitCodes ?? [0, 3010]);
+          return;
+        }
+      } else {
+        const msg = `Existing installer SHA-256 ${v.sha256} does not match the configured value.`;
+        addLog("error", msg);
+      }
+
+      const deleteOk = await ask({
+        title: "Delete the downloaded installer?",
+        message: v.passed
+          ? "The installer will be kept unless you delete it."
+          : "This file does not match the configured SHA-256 and should not be run. Delete it?",
+        details: verifyDetails(savePath, v),
+        confirmLabel: "Yes, delete",
+        cancelLabel: "Keep it",
+      });
+      if (deleteOk) {
+        await api.deleteInstaller(savePath);
+        addLog("success", `Deleted ${savePath}`);
+      } else {
+        addLog("info", `Kept the existing installer at ${savePath}`);
+      }
+      setPhase("ready");
+    },
+    [addLog, ask, runAt],
+  );
+
   //=-- Load startup context and config on mount.
   useEffect(() => {
     let cancelled = false;
@@ -190,6 +325,18 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
 
         addLog("success", `Loaded config with ${cfg.sites.length} site(s)`);
         setPhase("ready");
+
+        //=-- A leftover installer is offered for install/delete before the user picks a site.
+        try {
+          await handleExistingInstaller(ctx, cfg, () => cancelled);
+        } catch (e) {
+          //=-- A problem with the leftover file must not look like a config failure.
+          if (cancelled) return;
+          const msg = extractErrorMessage(e);
+          addLog("error", `Could not handle the existing installer: ${msg}`);
+          setError(msg);
+          setPhase("failed");
+        }
       } catch (e) {
         if (cancelled) return;
         const msg = extractErrorMessage(e);
@@ -203,7 +350,7 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [addLog]);
+  }, [addLog, handleExistingInstaller]);
 
   const selectedSite = useMemo(
     () => config?.sites.find((loc) => loc.id === selectedSiteId) ?? null,
@@ -291,29 +438,12 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
       if (v.sha256Matches) addLog("success", "SHA-256 matches the configured value.");
 
       //=-- 5. Confirm before running.
-      const warnings: string[] = [];
-      if (v.signatureStatus !== "Valid") {
-        warnings.push(
-          v.signatureStatus === "NotChecked"
-            ? "The digital signature could not be checked."
-            : `The digital signature is not valid (${v.signatureStatus}).`,
-        );
-      }
-      if (v.sha256Matches === null) {
-        warnings.push("No expected SHA-256 is configured, so the hash was not compared.");
-      }
       setPhase("confirming");
       const runOk = await ask({
         title: "Run the installer?",
         message: "The download was verified. Run it now?",
-        warnings,
-        details: [
-          { label: "File", value: p.savePath },
-          { label: "Size", value: `${v.fileSize.toLocaleString()} bytes` },
-          { label: "SHA-256", value: v.sha256 },
-          { label: "Signature", value: v.signatureStatus },
-          ...(v.signer ? [{ label: "Signed by", value: v.signer }] : []),
-        ],
+        warnings: verifyWarnings(v),
+        details: verifyDetails(p.savePath, v),
         confirmLabel: "Yes, install",
         cancelLabel: "No",
       });
@@ -324,32 +454,14 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
       }
 
       //=-- 6. Run.
-      setPhase("running");
-      addLog("info", "Running installer...");
-      const successCodes = config?.installer.successExitCodes ?? [0, 3010];
-      const res = await api.runInstaller(p.savePath, p.installerArgs, successCodes);
-      setResult(res);
-
-      if (res.success) {
-        const reboot = res.rebootRequired ? " — a reboot may be required" : "";
-        addLog(
-          "success",
-          `Installer finished successfully (exit code ${res.exitCode ?? "n/a"})${reboot}`,
-        );
-        setPhase("complete");
-      } else {
-        const msg = `Installer exited with code ${res.exitCode ?? "unknown"}.`;
-        addLog("error", msg);
-        setError(msg);
-        setPhase("failed");
-      }
+      await runAt(p.savePath, p.installerArgs, config?.installer.successExitCodes ?? [0, 3010]);
     } catch (e) {
       const msg = extractErrorMessage(e);
       addLog("error", `Install failed: ${msg}`);
       setError(msg);
       setPhase("failed");
     }
-  }, [selectedSiteId, config, addLog, ask]);
+  }, [selectedSiteId, config, addLog, ask, runAt]);
 
   /**
    * Returns to the ready state, clearing the plan, result and error.

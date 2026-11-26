@@ -62,6 +62,8 @@ pub fn run() {
             commands::config::load_config,
             commands::installer::download_installer,
             commands::installer::verify_installer,
+            commands::installer::installer_exists,
+            commands::installer::delete_installer,
             commands::installer::run_installer,
             commands::installer::build_install_plan,
             commands::installer::install_agent,

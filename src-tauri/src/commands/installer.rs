@@ -42,6 +42,28 @@ pub async fn verify_installer(
     Ok(result)
 }
 
+/// Reports whether a regular file already exists at `save_path` (a leftover installer).
+#[tauri::command]
+pub fn installer_exists(save_path: String) -> bool {
+    std::path::Path::new(&save_path).is_file()
+}
+
+/// Deletes the leftover installer at `save_path`. Only regular files are removed.
+#[tauri::command]
+pub fn delete_installer(state: State<'_, AppState>, save_path: String) -> Result<(), AppError> {
+    let path = std::path::Path::new(&save_path);
+    if !path.is_file() {
+        return Err(AppError::FileSystem(format!(
+            "Not a file, refusing to delete: '{}'",
+            save_path
+        )));
+    }
+    std::fs::remove_file(path)
+        .map_err(|e| AppError::FileSystem(format!("Could not delete '{}': {}", save_path, e)))?;
+    write_log(&state.log_path, "INFO", &format!("Deleted installer {}", save_path));
+    Ok(())
+}
+
 /// Runs the installer at `save_path` with `args`.
 ///
 /// `success_codes` defaults to `[0, 3010]` when not provided.
