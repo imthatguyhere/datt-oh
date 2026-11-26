@@ -159,7 +159,7 @@ The **Rust backend is authoritative** for config loading, filesystem access, dow
 - `components/` — `AppShell`, `Header`, `SiteSelect`, `InstallerStatus`, `InstallButton`, `LogPanel`, `ErrorPanel`
 - `lib/` — `types`, `tauri` (command wrappers), `config`, `validation`, `installerArgs`, `errors`
 - `state/installerStore` — React context + state machine
-- `styles.css` — warpburple theme (Tailwind v4 + daisyUI v5)
+- `styles.css` — warpburple theme (Tailwind v4 + daisyUI v5); fonts: M PLUS 2 (sans) and M PLUS 1 Code (mono) via Fontsource, bundled offline
 
 ### Backend (`src-tauri/src/`)
 
