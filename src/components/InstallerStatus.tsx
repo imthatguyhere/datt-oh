@@ -43,7 +43,7 @@ export default function InstallerStatus() {
     <section className="glow-panel card rounded-box p-5">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-lg font-semibold">Status</h2>
-        <span className={`badge ${needsSite ? "badge-info" : (phaseBadge[phase] ?? "badge-neutral")}`}>
+        <span className={`badge font-bold ${needsSite ? "badge-info" : (phaseBadge[phase] ?? "badge-neutral")}`}>
           {needsSite ? "Select a Site" : (phaseLabel[phase] ?? phase)}
         </span>
       </div>
