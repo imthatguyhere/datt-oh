@@ -17,6 +17,7 @@ sequenceDiagram
         Boot->>Svc: config_loader (local/remote)
         Boot->>Svc: install_planner (resolve site → download URL from siteUid)
         Boot->>Svc: downloader
+        Boot->>Svc: verifier (aborts on configured-hash mismatch)
         Boot->>Svc: process_runner
         Boot->>Boot: exit(code)
     else ui mode
@@ -24,7 +25,10 @@ sequenceDiagram
         UI->>Cmd: get_startup_context
         UI->>Cmd: load_config
         UI->>Cmd: build_install_plan
+        UI->>UI: confirm dialog (yes/no)
         UI->>Cmd: download_installer
+        UI->>Cmd: verify_installer
+        UI->>UI: confirm dialog (yes/no, shows hash + signature)
         UI->>Cmd: run_installer
     end
 ```
@@ -43,11 +47,12 @@ Precedence (highest first): CLI args → environment variables → `.env` → JS
 
 - Log panel height: in the two-column layout the log is absolutely positioned inside its grid cell (`lg:absolute lg:inset-0`), so the row height is set only by the Site + Status column and the log panel matches it exactly; its content scrolls and `LogPanel` auto-scrolls to the newest entry. In the single-column layout it falls back to a `max-h-96` scroll area.
 - The native window title starts as `datt-oh` (`tauri.conf.json`) and is replaced by `app.title` from the config once it loads (`setWindowTitle` in `src/lib/tauri.ts`, called from the installer store).
-- `AppShell` observes its root element with a `ResizeObserver` and calls `fitWindowHeight` so the window's inner height always matches the content (capped to the screen's available height; width is left to the user). The root deliberately has no `min-h-screen`, otherwise the content would stretch to the window and the fit would feed back. `tauri.conf.json` sets a small `minHeight` (300) so the window can shrink.
+- `AppShell` observes its root element with a `ResizeObserver` and calls `fitWindowHeight`, which only ever grows the window's inner height when the content is taller than the window (capped to the screen's available height; width is left to the user). It never shrinks the window, so content changes (a shorter log, a removed error panel, the loading screen going away) leave the size alone; the user can still shrink it by hand. The root deliberately has no `min-h-screen`, otherwise the content would stretch to the window and the fit would feed back. `tauri.conf.json` sets the starting size (1080x640) and a small `minHeight` (300) so the user can shrink it manually.
 - The native title bar is disabled (`"decorations": false` in `tauri.conf.json`). `data-tauri-drag-region` is set on `html`, `body`, `#root` (so any empty space revealed when the window is resized taller than the content still drags), the page root, header, `main`, the action row, and the footer so dragging any background area moves the window (the attribute is not inherited, so cards and controls do not drag; the header's logo/title/badge use `pointer-events-none` so clicks fall through to the header).
 - `WindowControls` (in `src/components/WindowControls.tsx`) renders the right-aligned traffic lights — green maximize/restore, yellow minimize, red close — via `toggleMaximizeWindow`, `minimizeWindow`, and `closeWindow` in `src/lib/tauri.ts`. `fitWindowHeight` skips fitting while the window is maximized so it does not un-maximize it.
 - While maximized, background drags are blocked so the window cannot be dragged (which would un-maximize it on Windows): `AppShell` tracks the maximized state via `watchMaximized` (initial `isMaximized()` + `onResized`), and a capture-phase `mousedown` listener on `window` stops the event before Tauri's `document` drag handler when the target has `data-tauri-drag-region`. Double-click is handled there too and calls `toggleMaximizeWindow`. Normal (non-maximized) dragging is untouched.
-- Site dropdown: `SiteSelect` is a custom themed listbox (not a native `<select>`, whose OS-drawn popup can't be styled) with click, arrow/Home/End, Enter/Space, Esc and click-outside handling, plus a type-to-filter search box at the top of the open list (focused on open; typing on the closed button opens it pre-filtered). Filtering uses `fuzzyScore` (case-insensitive subsequence match with bonuses for prefix, word-start and consecutive/contiguous matches, short name weighted above the full label); matches are ordered best-first, the placeholder is hidden while filtering, and Enter picks the highlighted match. Each short name is shown as a badge (in the dropdown, the list, and the details row) colored from a stable hash of the name (`src/lib/badgeColor.ts`: `hueFromText`, `badgeStyle`). It always renders, with a `----------` placeholder option (value `""`) first, so it is never empty even if no config loads. The store pre-selects a site only when `defaults.siteId` matches a configured site; otherwise `selectedSite` is `null` and `InstallButton` stays disabled.
+- Site dropdown: `SiteSelect` is a custom themed listbox (not a native `<select>`, whose OS-drawn popup can't be styled) with click, arrow/Home/End, Enter/Space, Esc and click-outside handling. The trigger itself turns into the type-to-filter text input while the list is open (typing on the closed trigger opens it pre-filtered). Filtering uses `fuzzyScore` (case-insensitive subsequence match with bonuses for prefix, word-start and consecutive/contiguous matches, short name weighted above the full label); matches are ordered best-first, the placeholder is hidden while filtering, and Enter picks the highlighted match. Each short name is shown as a badge (in the dropdown, the list, and the details row) colored from a stable hash of the name (`src/lib/badgeColor.ts`: `hueFromText`, `badgeStyle`). It always renders, with a `----------` placeholder option (value `""`) first, so it is never empty even if no config loads. The store pre-selects a site only when `defaults.siteId` matches a configured site; otherwise `selectedSite` is `null` and `InstallButton` stays disabled.
+- Install confirmations: `install()` in `installerStore.tsx` runs plan → `confirming` (yes/no: site, UID, download URL) → `downloading` → `verifying` (`verifyInstaller`; a failed `passed` throws) → `confirming` (yes/no: path, size, SHA-256, signature, plus warnings when the signature is not `Valid`/`NotChecked` or no checksum is configured) → `running`. Questions are asked through the store's `ask()` promise and rendered by `ConfirmDialog` (modal, focus starts on No, Esc = No, Tab trapped, and `preventDefault` on Esc so `AppShell` does not also un-maximize). Declining at either point logs the cancellation and returns to `ready`; the downloaded file is kept.
 - Keyboard shortcuts (a `keydown` listener in `AppShell`): `F11` calls `toggleMaximizeWindow`; `Esc` calls `restoreIfMaximized` (un-maximizes) (no-op when not maximized, and skipped when the site dropdown consumed the key to close its open list via `preventDefault`). Key repeat is ignored.
 - Permissions required in `src-tauri/capabilities/default.json`: `core:window:allow-set-title`, `allow-set-size`, `allow-start-dragging`, `allow-close`, `allow-minimize`, `allow-toggle-maximize`, `allow-unmaximize`, `allow-is-maximized`.
 
@@ -90,9 +95,10 @@ Tauri `#[tauri::command]` surface.
 ### `installer.rs`
 
 - `download_installer(url, save_path)` → `DownloadResult`.
+- `verify_installer(state, save_path, expected_sha256)` → `VerifyResult` (logs hash and signature).
 - `run_installer(save_path, args, success_codes)` → `InstallResult`.
 - `build_install_plan(state, request)` → `InstallPlan` (validates before any download).
-- `install_agent(state, request)` → `InstallResult` (high-level: plan + download + run).
+- `install_agent(state, request)` → `InstallResult` (high-level: plan + download + verify + run; a configured-hash mismatch aborts before running).
 - `load_state_config` helper reloads config from the resolved `config_source`.
 
 ## services/
@@ -112,6 +118,10 @@ Tauri `#[tauri::command]` surface.
 ### `downloader.rs`
 
 - `download_installer` — creates parent dirs, streams the body to the destination, rejects zero-byte files, returns size/duration.
+
+### `verifier.rs`
+
+- `verify_installer(save_path, expected_sha256)` → `VerifyResult` — rejects a missing/empty file, streams a SHA-256 (`sha2` crate, in `spawn_blocking`), compares it case-insensitively to `expected_sha256` when one is configured (`passed = false` only on a mismatch), and reads the Authenticode status/signer via `powershell.exe Get-AuthenticodeSignature` (path passed through the `DATTOH_VERIFY_PATH` env var, never interpolated; hidden window via `CREATE_NO_WINDOW`). Non-Windows builds, or a PowerShell failure, report `NotChecked`. A signature that is not `Valid` is informational: the UI shows it as a warning and the user decides.
 
 ### `process_runner.rs`
 
@@ -135,7 +145,7 @@ Tauri `#[tauri::command]` surface.
 
 ### `models/config.rs`
 
-`AppConfig`, `AppSection` (`title`, `subtitle`, `theme`), `InstallerSection`, `DefaultsSection`, `SiteConfig`, `AppMode`. JSON uses camelCase keys (`platform`, `downloadUrlTemplate`, `siteUid`, etc.). Three fields are parsed but not currently used by any code: `app.theme`, `installer.defaultMode`, and `installer.sha256` (no checksum verification is performed).
+`AppConfig`, `AppSection` (`title`, `subtitle`, `theme`), `InstallerSection`, `DefaultsSection`, `SiteConfig`, `AppMode`. JSON uses camelCase keys (`platform`, `downloadUrlTemplate`, `siteUid`, etc.). Two fields are parsed but not currently used by any code: `app.theme` and `installer.defaultMode`. `installer.sha256` is used: when set, the downloaded file's SHA-256 must match it (case-insensitive) or the install aborts.
 
 ### `errors.rs`
 
@@ -143,7 +153,7 @@ Tauri `#[tauri::command]` surface.
 
 ### `models/installer.rs`
 
-DTOs for the Tauri boundary: `StartupContext`, `InstallRequest`, `InstallPlan`, `DownloadResult`, `InstallResult` (all `camelCase`).
+DTOs for the Tauri boundary: `StartupContext`, `InstallRequest`, `InstallPlan`, `DownloadResult`, `VerifyResult` (`fileSize`, `sha256`, `sha256Matches`, `signatureStatus`, `signer`, `passed`), `InstallResult` (all `camelCase`).
 
 ### `models/startup.rs`
 
