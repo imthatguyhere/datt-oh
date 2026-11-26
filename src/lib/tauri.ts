@@ -112,6 +112,43 @@ export async function watchMaximized(onChange: (maximized: boolean) => void): Pr
 }
 
 /**
+ * Reports whether the window is focused now and whenever that changes. Combines the native
+ * window's focus events with the document's own focus/blur events, so a focus that lands while
+ * the window is still starting up is not missed. Works (DOM events only) outside Tauri.
+ *
+ * @param onChange - Called with the current focused state.
+ * @returns An unsubscribe function.
+ */
+export async function watchFocused(onChange: (focused: boolean) => void): Promise<() => void> {
+  let sawEvent = false;
+  const emit = (focused: boolean) => {
+    sawEvent = true;
+    onChange(focused);
+  };
+  const on = () => emit(true);
+  const off = () => emit(false);
+  window.addEventListener("focus", on);
+  window.addEventListener("blur", off);
+  let unlisten: () => void = () => {};
+
+  try {
+    const win = getCurrentWindow();
+    //=-- Subscribe first, then ask, so a change during the query is not lost.
+    unlisten = await win.onFocusChanged(({ payload }) => emit(payload));
+    const initial = (await win.isFocused()) || document.hasFocus();
+    if (!sawEvent) onChange(initial);
+  } catch {
+    if (!sawEvent) onChange(document.hasFocus());
+  }
+
+  return () => {
+    window.removeEventListener("focus", on);
+    window.removeEventListener("blur", off);
+    unlisten();
+  };
+}
+
+/**
  * Gets the app version as built into the binary (from Cargo.toml), not from the editable config.
  *
  * @returns The version string, e.g. "1.0.0".
