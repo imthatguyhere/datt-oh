@@ -24,6 +24,12 @@ sequenceDiagram
         Boot->>Cmd: register commands, launch window
         UI->>Cmd: get_startup_context
         UI->>Cmd: load_config
+        opt installer already at save path
+            UI->>Cmd: installer_exists
+            UI->>Cmd: verify_installer
+            UI->>UI: confirm run (yes/no), then confirm delete (yes/keep)
+            UI->>Cmd: run_installer or delete_installer
+        end
         UI->>Cmd: build_install_plan
         UI->>UI: confirm dialog (yes/no)
         UI->>Cmd: download_installer
@@ -100,6 +106,8 @@ Tauri `#[tauri::command]` surface.
 
 - `download_installer(url, save_path)` → `DownloadResult`.
 - `verify_installer(state, save_path, expected_sha256)` → `VerifyResult` (logs hash and signature).
+- `installer_exists(save_path)` → `bool` (regular file present; used for the startup leftover-installer prompt, whose save path the frontend resolves from the `/savepath` override or `installer.defaultSavePath`).
+- `delete_installer(state, save_path)` → removes a regular file only (errors otherwise) and logs it.
 - `run_installer(save_path, args, success_codes)` → `InstallResult`.
 - `build_install_plan(state, request)` → `InstallPlan` (validates before any download).
 - `install_agent(state, request)` → `InstallResult` (high-level: plan + download + verify + run; a configured-hash mismatch aborts before running).
