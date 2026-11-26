@@ -4,11 +4,13 @@ use tauri::State;
 
 use crate::models::config::AppConfig;
 use crate::models::errors::AppError;
-use crate::models::installer::{DownloadResult, InstallPlan, InstallRequest, InstallResult};
+use crate::models::installer::{
+    DownloadResult, InstallPlan, InstallRequest, InstallResult, VerifyResult,
+};
 use crate::services::{
     config_loader, downloader, install_planner,
     logging::{redact_args, write_log},
-    process_runner,
+    process_runner, verifier,
 };
 use crate::AppState;
 
@@ -16,6 +18,28 @@ use crate::AppState;
 #[tauri::command]
 pub async fn download_installer(url: String, save_path: String) -> Result<DownloadResult, AppError> {
     downloader::download_installer(&url, &save_path).await
+}
+
+/// Verifies the downloaded installer at `save_path` (SHA-256, optional expected hash, signature).
+#[tauri::command]
+pub async fn verify_installer(
+    state: State<'_, AppState>,
+    save_path: String,
+    expected_sha256: Option<String>,
+) -> Result<VerifyResult, AppError> {
+    let result = verifier::verify_installer(&save_path, expected_sha256.as_deref()).await?;
+    write_log(
+        &state.log_path,
+        if result.passed { "INFO" } else { "ERROR" },
+        &format!(
+            "Verified installer: sha256={} signature={} signer={} hashMatch={:?}",
+            result.sha256,
+            result.signature_status,
+            result.signer.as_deref().unwrap_or("-"),
+            result.sha256_matches
+        ),
+    );
+    Ok(result)
 }
 
 /// Runs the installer at `save_path` with `args`.
@@ -98,6 +122,15 @@ pub async fn install_agent(
         "INFO",
         &format!("Downloaded {} bytes to {}", dl.file_size, dl.destination_path),
     );
+
+    let verified =
+        verifier::verify_installer(&plan.save_path, config.installer.sha256.as_deref()).await?;
+    if !verified.passed {
+        return Err(AppError::InstallerFailed(format!(
+            "Installer SHA-256 {} does not match the configured value",
+            verified.sha256
+        )));
+    }
 
     let success_codes = config
         .installer
