@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { badgeStyle } from "../lib/badgeColor";
 import { useInstaller } from "../state/installerStore";
+import CopyButton from "./CopyButton";
 
 /**
  * A short name rendered as a badge whose color is derived from the name itself.
@@ -362,15 +363,23 @@ export default function SiteSelect() {
 
       {/*=-- Always shown; falls back to a dash when no site is selected. */}
       <div className="mt-4 space-y-1 text-sm">
-        <div className="flex justify-between gap-2">
+        <div className="flex items-center justify-between gap-2">
           <span className="text-base-content/60">Site ID</span>
-          <span className="font-mono">{selectedSite?.id ?? "—"}</span>
+          <span className="flex items-center gap-1">
+            <span className="font-mono">{selectedSite?.id ?? "—"}</span>
+            <span aria-hidden="true" className="ml-1 h-5 w-px bg-linear-to-b from-transparent via-base-content/30 to-transparent" />
+            <CopyButton text={selectedSite?.id ?? ""} label="Copy Site ID" />
+          </span>
         </div>
-        <div className="flex justify-between gap-2">
+        <div className="flex items-center justify-between gap-2">
           <span className="text-base-content/60">Datto UID</span>
-          <code className="font-mono text-accent">
-            {selectedSite?.siteUid ?? "—"}
-          </code>
+          <span className="flex items-center gap-1">
+            <code className="font-mono text-accent">
+              {selectedSite?.siteUid ?? "—"}
+            </code>
+            <span aria-hidden="true" className="ml-1 h-5 w-px bg-linear-to-b from-transparent via-base-content/30 to-transparent" />
+            <CopyButton text={selectedSite?.siteUid ?? ""} label="Copy Datto UID" />
+          </span>
         </div>
       </div>
     </section>

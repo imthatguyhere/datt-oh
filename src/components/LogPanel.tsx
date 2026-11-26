@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import CopyButton from "./CopyButton";
 import { useInstaller } from "../state/installerStore";
 
 /**
@@ -26,12 +27,15 @@ export default function LogPanel() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [logs]);
 
+  const logText = logs.map((e) => `[${e.time}] ${e.message}`).join("\n");
+
   return (
     <section className="glow-panel card flex h-full w-full flex-col rounded-box p-5">
       <h2 className="mb-3 shrink-0 text-lg font-semibold">Log</h2>
+      <div className="relative flex max-h-96 min-h-32 flex-1 flex-col overflow-hidden lg:max-h-none">
       <div
         ref={scrollRef}
-        className="max-h-96 min-h-32 flex-1 overflow-y-auto rounded-lg bg-base-200/50 p-3 font-mono text-xs leading-relaxed lg:max-h-none"
+        className="flex-1 overflow-y-auto rounded-lg bg-base-200/50 p-3 font-mono text-xs leading-relaxed"
       >
         {logs.length === 0 ? (
           <p className="text-base-content/50">No log entries yet.</p>
@@ -45,6 +49,9 @@ export default function LogPanel() {
             </div>
           ))
         )}
+      </div>
+      {/*=-- Sits over the log's bottom-right corner, outside the scrolling region so it stays put. */}
+      <CopyButton text={logText} label="Copy log" className="absolute right-3 bottom-2 bg-base-300/80 backdrop-blur-sm" />
       </div>
     </section>
   );
