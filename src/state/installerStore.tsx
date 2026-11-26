@@ -140,15 +140,15 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
    * @param message - Text to show.
    */
   const addLog = useCallback((level: LogLevel, message: string) => {
-    setLogs((prev) => [
-      ...prev,
-      {
-        id: nextLogId++,
-        time: new Date().toLocaleTimeString(),
-        level,
-        message,
-      },
-    ]);
+    //=-- Build the entry (and take its id) outside the state updater: React may run an updater more
+    //=-- than once (StrictMode, queued-update replays), and an impure id there yields duplicate keys.
+    const entry: LogEntry = {
+      id: nextLogId++,
+      time: new Date().toLocaleTimeString(),
+      level,
+      message,
+    };
+    setLogs((prev) => [...prev, entry]);
   }, []);
 
   //=-- Load startup context and config on mount.
