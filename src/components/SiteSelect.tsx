@@ -82,6 +82,9 @@ function fuzzyScore(query: string, text: string): number | null {
  */
 export default function SiteSelect() {
   const { config, selectedSite, selectSite } = useInstaller();
+
+  //=-- Full site name: "short name - description"; empty until a site is selected.
+  const siteName = selectedSite ? `${selectedSite.shortName} - ${selectedSite.displayName}` : "";
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [query, setQuery] = useState("");
@@ -361,12 +364,20 @@ export default function SiteSelect() {
         )}
       </div>
 
-      {/*=-- Always shown; falls back to a dash when no site is selected. */}
+      {/*=-- Always shown; falls back to a dash when no site is selected. Values use the mono font only when present, so all three empty-state dashes match (full-width, sans). */}
       <div className="mt-4 space-y-1 text-sm">
+        <div className="flex items-center justify-between gap-2">
+          <span className="shrink-0 text-base-content/60">Site Name</span>
+          <span className="flex min-w-0 items-center gap-1">
+            <span className="truncate">{siteName || "—"}</span>
+            <span aria-hidden="true" className="ml-1 h-5 w-px shrink-0 bg-linear-to-b from-transparent via-base-content/30 to-transparent" />
+            <CopyButton text={siteName} label="Copy Site Name" />
+          </span>
+        </div>
         <div className="flex items-center justify-between gap-2">
           <span className="text-base-content/60">Site ID</span>
           <span className="flex items-center gap-1">
-            <span className="font-mono">{selectedSite?.id ?? "—"}</span>
+            <span className={selectedSite ? "font-mono" : ""}>{selectedSite?.id ?? "—"}</span>
             <span aria-hidden="true" className="ml-1 h-5 w-px bg-linear-to-b from-transparent via-base-content/30 to-transparent" />
             <CopyButton text={selectedSite?.id ?? ""} label="Copy Site ID" />
           </span>
@@ -374,7 +385,7 @@ export default function SiteSelect() {
         <div className="flex items-center justify-between gap-2">
           <span className="text-base-content/60">Datto UID</span>
           <span className="flex items-center gap-1">
-            <code className="font-mono text-accent">
+            <code className={`text-accent ${selectedSite ? "font-mono" : "font-sans"}`}>
               {selectedSite?.siteUid ?? "—"}
             </code>
             <span aria-hidden="true" className="ml-1 h-5 w-px bg-linear-to-b from-transparent via-base-content/30 to-transparent" />
