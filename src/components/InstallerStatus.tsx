@@ -6,7 +6,9 @@ import { useInstaller } from "../state/installerStore";
 const phaseLabel: Record<string, string> = {
   loading: "Loading config",
   ready: "Ready",
+  confirming: "Waiting for confirmation",
   downloading: "Downloading installer",
+  verifying: "Verifying installer",
   running: "Running installer",
   complete: "Complete",
   failed: "Failed",
@@ -18,7 +20,9 @@ const phaseLabel: Record<string, string> = {
 const phaseBadge: Record<string, string> = {
   loading: "badge-info",
   ready: "badge-success",
+  confirming: "badge-info",
   downloading: "badge-warning",
+  verifying: "badge-warning",
   running: "badge-warning",
   complete: "badge-success",
   failed: "badge-error",
