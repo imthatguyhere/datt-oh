@@ -124,14 +124,24 @@ fn split_args(s: &str) -> Vec<String> {
     s.split_whitespace().map(|x| x.to_string()).collect()
 }
 
-/// Returns the first existing default config path, accounting for `tauri dev` running from `src-tauri/`.
+/// Returns the first existing default config path.
+///
+/// Search order: `config.json` next to the executable, `config.json` in the working directory,
+/// then `../config.json` (so `tauri dev`, which runs from `src-tauri/`, finds the repo-root file).
 pub fn default_config_source() -> Option<String> {
-    for candidate in ["../config.json", "config.json", "./config.json"] {
-        if std::path::Path::new(candidate).exists() {
-            return Some(candidate.to_string());
-        }
+    //=-- The exe's own folder wins so a stray parent-folder config can't shadow the one shipped beside it.
+    if let Some(path) = std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|dir| dir.join("config.json")))
+        .filter(|p| p.is_file())
+    {
+        return Some(path.to_string_lossy().into_owned());
     }
-    None
+
+    ["config.json", "../config.json"]
+        .into_iter()
+        .find(|candidate| std::path::Path::new(candidate).is_file())
+        .map(str::to_string)
 }
 
 /// Returns the default log path: `%ProgramData%\datt-oh\logs\installer.log`.

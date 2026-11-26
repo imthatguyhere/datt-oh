@@ -101,7 +101,7 @@ Tauri `#[tauri::command]` surface.
 
 - `parse_args` — Windows-style arg tokenizer (key/value, flags, quoted values).
 - `resolve_startup` — merges CLI and env into `StartupArgs`.
-- `default_config_source` — first existing of `../config.json`, `config.json`, `./config.json`.
+- `default_config_source` — first existing of `config.json` next to the executable, `config.json` in the working directory, then `../config.json` (for `tauri dev`, which runs from `src-tauri/`).
 - `default_log_path` — `%ProgramData%\datt-oh\logs\installer.log`.
 
 ### `config_loader.rs`
@@ -154,3 +154,7 @@ DTOs for the Tauri boundary: `StartupContext`, `InstallRequest`, `InstallPlan`, 
 | installed_name | osd_description    | detection function                                              |
 | -------------- | ------------------ | --------------------------------------------------------------- |
 | Datto agent    | Datto RMM agent    | Site-specific installer download (`siteUid` in URL) + execution |
+
+## Developer tooling: `scripts/sites-generator.ts`
+
+Run by `npm run sites` / `npm run configurator` (`node scripts/sites-generator.ts`; Node runs TypeScript directly). Not part of the app. Flow: load `.env`, resolve the output path (`--out` > `SITES_OUT` > `sites.json`); take the platform from `--platform`/`PLATFORM` or else `ask` (default `installer.platform`), and `DATTO_API_KEY`/`DATTO_API_SECRET` from the environment or else `ask` (the secret via `readHidden`, raw mode, no echo; no TTY is an error); `resolveApiUrl` uses a platform answer starting with `http(s)://` as given, else `https://<name>-api.centrastage.net`; `getToken` POSTs a password grant to `/auth/oauth/token` using Datto's public OAuth client; `fetchSites` pages through `GET /api/v2/account/sites` (`max=250`, following `pageDetails.nextPageUrl`); `toConfigSites` skips system sites (`Deleted Devices`), splits names with `splitName` (first spaced dash, colon or semicolon; no delimiter means the name is both short and display name), makes unique case-insensitive ids, applies `scripts/site-names.json` overrides (`loadOverrides`, matched by full Datto name, or by code for delimiter-less names only; unmatched entries are reported), sorts by short name; the result is written as `{ "sites": [...] }` and the absolute path is printed. Output is gitignored.

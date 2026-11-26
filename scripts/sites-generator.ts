@@ -1,0 +1,353 @@
+/**
+ * Sites generator: pulls every site from the Datto RMM API and writes them to `sites.json`
+ * in the shape of the `sites` array in `config.json`.
+ *
+ * Run with `npm run sites` (or `npm run configurator`). This is a developer tool and is not
+ * part of the app. It needs Node 22.18+ (runs TypeScript directly) and read access to the API.
+ *
+ * Settings (CLI flag > environment > `.env` > prompt). Anything not set is asked for in the terminal:
+ * - `DATTO_API_KEY` / `DATTO_API_SECRET`: the account's API keys. Create them in Datto RMM under
+ *   Setup > Users > (your user) > API Access. The secret is typed hidden.
+ * - `--platform` / `PLATFORM`: either the platform short name (`vidal`, which becomes
+ *   `https://vidal-api.centrastage.net`) or a full `http(s)://` API URL, which is used as given.
+ *   When not set, it is asked for, with `installer.platform` from `config.json` as the default.
+ * - `--out` / `SITES_OUT`: output file (default `sites.json` in the repo root).
+ *
+ * Optional name fixes live in `scripts/site-names.json` (see {@link NameOverride}); sites it does
+ * not mention keep the names derived from Datto.
+ */
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { createInterface } from "node:readline/promises";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+/** A site as returned by the Datto RMM API (only the fields used here). */
+interface DattoSite {
+  id: number;
+  uid: string;
+  name?: string | null;
+}
+
+/** One page of `GET /api/v2/account/sites`. */
+interface DattoSitesPage {
+  pageDetails?: { nextPageUrl?: string | null };
+  sites?: DattoSite[];
+}
+
+/** A site in the shape the app's `config.json` expects. */
+interface SiteConfig {
+  id: string;
+  shortName: string;
+  displayName: string;
+  siteUid: string;
+}
+
+/** Repo root (the folder above `scripts/`). */
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+/** Names of built-in Datto sites that are not customer sites and are skipped. */
+const SYSTEM_SITES = new Set(["deleted devices"]);
+
+/**
+ * Reads a `--name value` or `--name=value` CLI flag.
+ *
+ * @param name - Flag name without the leading dashes.
+ * @returns The value, or `undefined` when the flag is absent.
+ */
+function flag(name: string): string | undefined {
+  const args = process.argv.slice(2);
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === `--${name}`) return args[i + 1];
+    if (arg.startsWith(`--${name}=`)) return arg.slice(name.length + 3);
+  }
+  return undefined;
+}
+
+/**
+ * Returns the first non-blank string.
+ *
+ * @param values - Candidates in priority order.
+ * @returns The first candidate with content, trimmed, or `undefined`.
+ */
+function firstNonBlank(...values: (string | undefined)[]): string | undefined {
+  return values.map((v) => v?.trim()).find((v) => v);
+}
+
+/**
+ * Splits a Datto site name into a short name and a display name.
+ *
+ * The name is split at the first delimiter: a spaced dash (` - `, ` – `, ` — `), or a colon or
+ * semicolon (spaces optional). `77FORT - Fortress Security` and `77FORT: Fortress Security` both
+ * give `77FORT` and `Fortress Security`. An unspaced hyphen (`Coca-Cola`) is not a delimiter. A
+ * name with no delimiter is used as both the short name and the display name.
+ *
+ * @param name - The Datto site name.
+ * @returns The short and display names.
+ */
+function splitName(name: string): { shortName: string; displayName: string } {
+  const match = name.match(/^(.+?)(?:\s+[-–—]\s+|\s*[:;]\s*)(.+)$/);
+  if (match) return { shortName: match[1].trim(), displayName: match[2].trim() };
+  return { shortName: name.trim(), displayName: name.trim() };
+}
+
+/**
+ * A fix for how a site is named, from `scripts/site-names.json`. A plain string replaces the
+ * display name; an object can also replace the short name.
+ *
+ * Keys are matched ignoring case, spacing and dash style, in two ways: against the full Datto site
+ * name (any site), or against the short name of a site whose Datto name has no delimiter (just a
+ * code, or a code with a bracketed note). The second form is never applied to a site whose name
+ * has a delimiter, so a code shared by several sites cannot name the wrong one.
+ */
+export type NameOverride = string | { shortName?: string; displayName: string };
+
+/**
+ * Normalizes a name for matching: unifies dash styles, collapses spacing, lowercases.
+ *
+ * @param text - The name to normalize.
+ * @returns The comparison key.
+ */
+function normalizeKey(text: string): string {
+  return text.replace(/[–—]/g, "-").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/**
+ * Loads `scripts/site-names.json` if it exists.
+ *
+ * @returns Overrides keyed by normalized name, with the key as written for reporting.
+ */
+function loadOverrides(): Map<string, { key: string; value: NameOverride }> {
+  const map = new Map<string, { key: string; value: NameOverride }>();
+  const file = resolve(ROOT, "scripts", "site-names.json");
+  if (!existsSync(file)) return map;
+  const data = JSON.parse(readFileSync(file, "utf8")) as Record<string, NameOverride>;
+  for (const [key, value] of Object.entries(data)) map.set(normalizeKey(key), { key, value });
+  return map;
+}
+
+/**
+ * Converts Datto sites to config sites: splits names, applies name overrides, builds unique
+ * case-insensitive ids from the short name (a numeric suffix is added on collision), and sorts by
+ * short name.
+ *
+ * @param sites - Sites from the API.
+ * @param overrides - Name fixes from {@link loadOverrides}; entries that match are removed from it.
+ * @returns Sites ready for `config.json`.
+ */
+export function toConfigSites(
+  sites: DattoSite[],
+  overrides: Map<string, { key: string; value: NameOverride }> = new Map(),
+): SiteConfig[] {
+  const used = new Set<string>();
+  const out: SiteConfig[] = [];
+
+  for (const site of sites) {
+    const name = site.name?.trim() ?? "";
+    if (SYSTEM_SITES.has(name.toLowerCase())) continue;
+
+    //=-- A site with no name falls back to its UID so it is still selectable and unique.
+    const full = name || `Site ${site.uid.slice(0, 8)}`;
+    let { shortName, displayName } = splitName(full);
+
+    //=-- Full-name match first; a short-name match only for sites with no delimiter.
+    const fullKey = normalizeKey(full);
+    const codeKey = normalizeKey(shortName);
+    const noDelimiter = shortName === displayName;
+    const matchKey = overrides.has(fullKey) ? fullKey : noDelimiter && overrides.has(codeKey) ? codeKey : null;
+    if (matchKey) {
+      const value = overrides.get(matchKey)!.value;
+      overrides.delete(matchKey);
+      if (typeof value === "string") displayName = value;
+      else {
+        displayName = value.displayName;
+        shortName = value.shortName ?? shortName;
+      }
+    }
+
+    const base = shortName.replace(/[^A-Za-z0-9-]+/g, "").toUpperCase() || "SITE";
+    let id = base;
+    for (let n = 2; used.has(id.toLowerCase()); n++) id = `${base}-${n}`;
+    used.add(id.toLowerCase());
+
+    out.push({ id, shortName, displayName, siteUid: site.uid });
+  }
+
+  return out.sort((a, b) =>
+    a.shortName.localeCompare(b.shortName, undefined, { sensitivity: "base", numeric: true }),
+  );
+}
+
+/**
+ * Requests an OAuth access token from the Datto RMM API.
+ *
+ * @param apiUrl - API base URL.
+ * @param key - API key.
+ * @param secret - API secret.
+ * @returns The bearer token.
+ */
+async function getToken(apiUrl: string, key: string, secret: string): Promise<string> {
+  //=-- Datto's documented public OAuth client; the account's own key/secret go in the form body.
+  const res = await fetch(`${apiUrl}/auth/oauth/token`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${Buffer.from("public-client:public").toString("base64")}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ grant_type: "password", username: key, password: secret }),
+  });
+  if (!res.ok) {
+    throw new Error(`Authentication failed (HTTP ${res.status}). Check the API key, secret and platform.`);
+  }
+  const body = (await res.json()) as { access_token?: string };
+  if (!body.access_token) throw new Error("Authentication response had no access_token.");
+  return body.access_token;
+}
+
+/**
+ * Fetches every site, following the API's pagination.
+ *
+ * @param apiUrl - API base URL.
+ * @param token - Bearer token.
+ * @returns All sites on the account.
+ */
+async function fetchSites(apiUrl: string, token: string): Promise<DattoSite[]> {
+  const sites: DattoSite[] = [];
+  let url: string | null = `${apiUrl}/api/v2/account/sites?page=0&max=250`;
+
+  while (url) {
+    const res: Response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error(`Fetching sites failed (HTTP ${res.status}) from ${url}`);
+    const page = (await res.json()) as DattoSitesPage;
+    sites.push(...(page.sites ?? []));
+    url = page.pageDetails?.nextPageUrl ?? null;
+  }
+  return sites;
+}
+
+/**
+ * Asks a question in the terminal.
+ *
+ * Secret answers are read in raw mode and not echoed. Fails instead of hanging when there is no
+ * interactive terminal to answer on.
+ *
+ * @param question - Prompt text.
+ * @param options.secret - Hide what is typed.
+ * @param options.defaultValue - Value used when the answer is blank (shown in brackets).
+ * @returns The trimmed answer, or the default when blank.
+ */
+async function ask(
+  question: string,
+  options: { secret?: boolean; defaultValue?: string } = {},
+): Promise<string> {
+  if (!process.stdin.isTTY) {
+    throw new Error(`"${question}" is not set and there is no terminal to ask on. Set it in .env or the environment.`);
+  }
+  const prompt = `${question}${options.defaultValue ? ` [${options.defaultValue}]` : ""}: `;
+
+  let answer: string;
+  if (options.secret) {
+    process.stdout.write(prompt);
+    answer = await readHidden();
+  } else {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    answer = await rl.question(prompt);
+    rl.close();
+  }
+  return answer.trim() || options.defaultValue || "";
+}
+
+/**
+ * Reads a line from the terminal without echoing it. Supports paste and backspace; Ctrl+C aborts.
+ *
+ * @returns The typed line.
+ */
+function readHidden(): Promise<string> {
+  return new Promise((resolveLine, reject) => {
+    const stdin = process.stdin;
+    let line = "";
+    const finish = (): void => {
+      stdin.setRawMode(false);
+      stdin.pause();
+      stdin.off("data", onData);
+      process.stdout.write("\n");
+    };
+    const onData = (chunk: Buffer): void => {
+      for (const ch of chunk.toString("utf8")) {
+        if (ch === "\r" || ch === "\n") {
+          finish();
+          return resolveLine(line);
+        }
+        if (ch === "\u0003") {
+          finish();
+          return reject(new Error("Cancelled."));
+        }
+        if (ch === "\b" || ch === "\u007f") line = line.slice(0, -1);
+        else line += ch;
+      }
+    };
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.on("data", onData);
+  });
+}
+
+/**
+ * Turns a platform answer into an API base URL.
+ *
+ * @param value - A platform short name (`vidal`) or a full `http(s)://` URL.
+ * @returns The URL: used as given (minus trailing slashes) if it is one, otherwise
+ *   `https://<name>-api.centrastage.net`.
+ */
+function resolveApiUrl(value: string): string {
+  const v = value.trim();
+  if (/^https?:\/\//i.test(v)) return v.replace(/\/+$/, "");
+  return `https://${v}-api.centrastage.net`;
+}
+
+/** Entry point: resolves settings, fetches the sites, and writes the output file. */
+async function main(): Promise<void> {
+  const envFile = resolve(ROOT, ".env");
+  if (existsSync(envFile)) process.loadEnvFile(envFile);
+
+  let configPlatform: string | undefined;
+  const configFile = resolve(ROOT, "config.json");
+  if (existsSync(configFile)) {
+    configPlatform = (JSON.parse(readFileSync(configFile, "utf8")) as { installer?: { platform?: string } })
+      .installer?.platform;
+  }
+
+  const out = resolve(ROOT, firstNonBlank(flag("out"), process.env.SITES_OUT) ?? "sites.json");
+
+  //=-- Anything not already set is asked for. The platform always defaults to the config's.
+  const platform =
+    firstNonBlank(flag("platform"), process.env.PLATFORM) ??
+    (await ask("Platform short name or API URL", { defaultValue: configPlatform }));
+  const key = firstNonBlank(process.env.DATTO_API_KEY) ?? (await ask("API key"));
+  const secret = firstNonBlank(process.env.DATTO_API_SECRET) ?? (await ask("API secret", { secret: true }));
+
+  if (!platform) throw new Error("No platform given.");
+  if (!key || !secret) throw new Error("An API key and secret are required.");
+
+  const apiUrl = resolveApiUrl(platform);
+  console.log(`Authenticating with ${apiUrl} ...`);
+  const token = await getToken(apiUrl, key, secret);
+
+  console.log("Fetching sites ...");
+  const overrides = loadOverrides();
+  const total = overrides.size;
+  const sites = toConfigSites(await fetchSites(apiUrl, token), overrides);
+  if (total) console.log(`Applied ${total - overrides.size} of ${total} name fix(es) from scripts/site-names.json.`);
+  for (const { key } of overrides.values()) console.warn(`  No site matched name fix: ${key}`);
+
+  writeFileSync(out, JSON.stringify({ sites }, null, 2) + "\n", "utf8");
+  console.log(`Wrote ${sites.length} site(s) to ${out}`);
+}
+
+//=-- Only run when executed directly, so the helpers can be imported for checks.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main().catch((e: unknown) => {
+    console.error(`Error: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(1);
+  });
+}

@@ -98,6 +98,16 @@ Both `/arg` and `-arg` styles are supported, with `=value` or space-separated va
 /logPath="C:\ProgramData\datt-oh\logs\installer.log"
 ```
 
+## Generating the site list
+
+`npm run sites` (alias `npm run configurator`) pulls every site from the Datto RMM API and writes `sites.json` in the repo root, then prints the file's full path. It is a developer tool and is not part of the app; the output is gitignored because it holds real customer data. Copy its `sites` array into `config.json`.
+
+Anything not set in the environment or `.env` is asked for in the terminal: `DATTO_API_KEY`, `DATTO_API_SECRET` (typed hidden) and the platform. Create the keys in Datto RMM under Setup > Users > your user > API Access. The platform is set by `--platform` or `PLATFORM`; if neither is set it is asked for, defaulting to `installer.platform` from `config.json` (press Enter to accept). Give a short name like `vidal` to use `https://vidal-api.centrastage.net`, or a full `http(s)://` URL to use it as given. With no terminal (for example when piped) a missing value is an error instead of a prompt. `--out <file>` (or `SITES_OUT`) changes the output path. Requires Node 22.18 or newer, which runs the TypeScript script directly.
+
+Datto sites only have a name, so a name is split into short name and display name at its first spaced dash (` - `, ` – `, ` — `), colon, or semicolon (`77FORT - Fortress Security`, `77FORT: Fortress Security`); an unspaced hyphen like `Coca-Cola` is not a delimiter. A name with no delimiter is used as both. Ids come from the short name (a `-2` suffix is added on collision), sites are sorted by short name, the built-in "Deleted Devices" site is skipped, and a site with no name is called `Site <first 8 chars of its UID>`. Review the result before using it.
+
+To fix names that Datto gets wrong (for example a site named only by its code), put them in `scripts/site-names.json` (gitignored, since it lists customers): a key is a Datto site name or code, and the value is the display name, or `{ "shortName": ..., "displayName": ... }` to change the short name too. A code key only applies to a site whose Datto name has no delimiter; use the full Datto name as the key for sites that share a code. The run reports how many fixes applied and lists any that matched no site.
+
 ## Output
 
 - **UI mode** logs progress to an on-screen log panel.
