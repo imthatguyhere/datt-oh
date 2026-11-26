@@ -8,6 +8,7 @@ import type {
   InstallRequest,
   InstallResult,
   StartupContext,
+  VerifyResult,
 } from "./types";
 
 /**
@@ -25,8 +26,9 @@ export async function setWindowTitle(title: string): Promise<void> {
 }
 
 /**
- * Resizes the window's inner height to fit the content, keeping the current width and never
- * exceeding the available screen height. Skipped while maximized. Ignored outside Tauri.
+ * Grows the window's inner height when the content is taller than the window, keeping the current
+ * width and never exceeding the available screen height. It never shrinks the window, so changes
+ * to the content do not resize it down. Skipped while maximized. Ignored outside Tauri.
  *
  * @param height - Desired inner height in CSS pixels.
  */
@@ -36,6 +38,8 @@ export async function fitWindowHeight(height: number): Promise<void> {
     //=-- A maximized window keeps whatever size the user chose; fitting would un-maximize it.
     if (await win.isMaximized()) return;
     const capped = Math.min(Math.ceil(height), window.screen.availHeight);
+    //=-- Grow only: never shrink, so the window does not jump around as content changes.
+    if (capped <= window.innerHeight) return;
     await win.setSize(new LogicalSize(window.innerWidth, capped));
   } catch {
     //=-- Not running inside Tauri; nothing to resize.
@@ -143,6 +147,17 @@ export function loadConfig(configSource: string): Promise<AppConfig> {
  */
 export function downloadInstaller(url: string, savePath: string): Promise<DownloadResult> {
   return invoke<DownloadResult>("download_installer", { url, savePath });
+}
+
+/**
+ * Verifies a downloaded installer: SHA-256, optional expected-hash check, and Authenticode signature.
+ *
+ * @param savePath - Path of the downloaded installer.
+ * @param expectedSha256 - Configured expected hash, if any.
+ * @returns Hash, signature and pass/fail details.
+ */
+export function verifyInstaller(savePath: string, expectedSha256?: string): Promise<VerifyResult> {
+  return invoke<VerifyResult>("verify_installer", { savePath, expectedSha256 });
 }
 
 /**
