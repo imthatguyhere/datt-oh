@@ -106,6 +106,8 @@ Anything not set in the environment or `.env` is asked for in the terminal: `DAT
 
 Datto sites only have a name, so a name is split into short name and display name at its first spaced dash (` - `, ` – `, ` — `), colon, or semicolon (`77FORT - Fortress Security`, `77FORT: Fortress Security`); an unspaced hyphen like `Coca-Cola` is not a delimiter. A name with no delimiter is used as both. Ids come from the short name (a `-2` suffix is added on collision), sites are sorted by short name, the built-in "Deleted Devices" site is skipped, and a site with no name is called `Site <first 8 chars of its UID>`. Review the result before using it.
 
+To fix names that Datto gets wrong (for example a site named only by its code), put them in `scripts/site-names.json` (gitignored, since it lists customers): a key is a Datto site name or code, and the value is the display name, or `{ "shortName": ..., "displayName": ... }` to change the short name too. A code key only applies to a site whose Datto name has no delimiter; use the full Datto name as the key for sites that share a code. The run reports how many fixes applied and lists any that matched no site.
+
 ## Output
 
 - **UI mode** logs progress to an on-screen log panel.
