@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Header from "./Header";
 import SiteSelect from "./SiteSelect";
 import InstallerStatus from "./InstallerStatus";
@@ -30,6 +30,16 @@ import {
 export default function AppShell() {
   const { phase } = useInstaller();
   const rootRef = useRef<HTMLDivElement>(null);
+  const [scrolled, setScrolled] = useState(false);
+
+  //=-- Give the sticky header bar a background only once content scrolls under it; at rest it is
+  //=-- transparent so it does not draw a hard edge across the page gradient.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 0);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   //=-- Keep the native window exactly as tall as the content (re-fits as the log grows or text wraps).
   //=-- The root is min-h-screen so the footer sticks to the bottom; that is safe because fitting only grows.
@@ -103,8 +113,16 @@ export default function AppShell() {
   }, []);
 
   return (
-    <div ref={rootRef} data-tauri-drag-region className="flex min-h-screen flex-col px-4 py-6 sm:px-8">
-      <Header />
+    <div ref={rootRef} data-tauri-drag-region className="flex min-h-screen flex-col px-4 pb-6 sm:px-8">
+      {/*=-- Sticky full-width bar: the header (and window controls) stay on top while the page scrolls. */}
+      <div
+        data-tauri-drag-region
+        className={`sticky top-0 z-40 -mx-4 mb-3 px-4 pb-3 pt-6 transition-[background-color,box-shadow] duration-200 sm:-mx-8 sm:px-8 ${
+          scrolled ? "bg-base-100/95 shadow-lg shadow-black/40 backdrop-blur-md" : "bg-transparent"
+        }`}
+      >
+        <Header />
+      </div>
 
       {phase === "loading" ? (
         <div className="flex flex-col items-center justify-center gap-4 py-24 text-base-content/70">

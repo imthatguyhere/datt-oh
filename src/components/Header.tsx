@@ -4,7 +4,8 @@ import WindowControls from "./WindowControls";
 
 /**
  * Page header: logo, title and subtitle from the config, the app version badge, and the
- * window controls. It is a drag region so it can move the window.
+ * window controls. It is a drag region so it can move the window. `AppShell` pins it in a
+ * sticky bar so it stays visible while the page scrolls.
  *
  * @returns The header element.
  */
@@ -16,7 +17,7 @@ export default function Header() {
   return (
     <header
       data-tauri-drag-region
-      className="mx-auto mb-6 flex w-full max-w-6xl items-center justify-between"
+      className="mx-auto flex w-full max-w-6xl items-center justify-between"
     >
       <div className="pointer-events-none flex items-center gap-3 select-none">
         <img
