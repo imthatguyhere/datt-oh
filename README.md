@@ -69,7 +69,7 @@ datt-oh.exe
 datt-oh.exe /config=https://example.com/datto-config.json
 ```
 
-Shows the main window (titled from `app.title` in the config, automatically sized to fit its content, and frameless: drag any background area to move it, and use the green/yellow/red buttons at the top right to maximize, minimize, or close; `F11` toggles maximize, and `Esc` restores the window while maximized) with a site dropdown (type to fuzzy-filter the list; starting on a `----------` placeholder, so the Install Agent button stays disabled until a valid site is chosen; `defaults.siteId` pre-selects a site) and status on the left and a live log panel on the right.
+Shows the main window (titled from `app.title` in the config, grows automatically if its content outgrows it but never shrinks on its own, and frameless: drag any background area to move it, and use the green/yellow/red buttons at the top right to maximize, minimize, or close; `F11` toggles maximize, and `Esc` restores the window while maximized) with a site dropdown (type to fuzzy-filter the list; starting on a `----------` placeholder, so the Install Agent button stays disabled until a valid site is chosen; `defaults.siteId` pre-selects a site) and status on the left and a live log panel on the right. Clicking **Install Agent** asks for confirmation (yes/no) before anything is downloaded; once the file is downloaded it is verified (SHA-256 hash, the optional `installer.sha256` checksum, and the Authenticode signature) and a second yes/no dialog shows the results (with warnings for an unsigned installer or a skipped checksum) before the installer is run. A hash that contradicts a configured `installer.sha256` aborts the install. Answering No at either step cancels cleanly (a downloaded file is kept on disk).
 
 ### Silent mode
 
@@ -79,7 +79,7 @@ datt-oh.exe -silent -site 77FORT -config C:\Path\config.json
 datt-oh.exe /mode=silent /site=77FORT
 ```
 
-Silent mode never shows a window. It resolves the site, downloads the installer, runs it, writes a log, and exits with a meaningful code.
+Silent mode never shows a window and asks no questions. It resolves the site, downloads the installer, verifies it (aborting with exit code `9` if a configured `installer.sha256` does not match), runs it, writes a log, and exits with a meaningful code.
 
 ### CLI arguments
 
@@ -147,7 +147,7 @@ flowchart LR
     J --> M[Run AgentSetup.exe with args]
 ```
 
-The **Rust backend is authoritative** for config loading, filesystem access, downloading, installer execution, and logging. The frontend never runs the installer directly.
+The **Rust backend is authoritative** for config loading, filesystem access, downloading, installer verification, installer execution, and logging. The frontend never runs the installer directly.
 
 ## Modules
 
@@ -164,7 +164,7 @@ The **Rust backend is authoritative** for config loading, filesystem access, dow
 - `main.rs` — binary entry point
 - `lib.rs` — silent-mode flow + Tauri builder
 - `commands/` — `config`, `installer`
-- `services/` — `arg_parser`, `config_loader`, `downloader`, `install_planner`, `process_runner`, `logging`
+- `services/` — `arg_parser`, `config_loader`, `downloader`, `verifier`, `install_planner`, `process_runner`, `logging`
 - `models/` — `config`, `installer`, `errors`, `startup`
 
 ## Tracked Software
