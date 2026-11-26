@@ -29,19 +29,22 @@ const phaseBadge: Record<string, string> = {
 };
 
 /**
- * Status card: current phase badge, plus the installer URL, save path and exit code once known.
+ * Status card: current phase badge ("Select a Site" while ready with no site chosen), plus the installer URL, save path and exit code once known.
  *
  * @returns The status card.
  */
 export default function InstallerStatus() {
-  const { phase, plan, result } = useInstaller();
+  const { phase, plan, result, selectedSite } = useInstaller();
+
+  //=-- While ready with the dropdown on its placeholder, prompt for a site instead of saying "Ready".
+  const needsSite = phase === "ready" && !selectedSite;
 
   return (
     <section className="glow-panel card rounded-box p-5">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-lg font-semibold">Status</h2>
-        <span className={`badge ${phaseBadge[phase] ?? "badge-neutral"}`}>
-          {phaseLabel[phase] ?? phase}
+        <span className={`badge ${needsSite ? "badge-info" : (phaseBadge[phase] ?? "badge-neutral")}`}>
+          {needsSite ? "Select a Site" : (phaseLabel[phase] ?? phase)}
         </span>
       </div>
 
