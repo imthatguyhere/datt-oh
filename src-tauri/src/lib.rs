@@ -61,6 +61,7 @@ pub fn run() {
             commands::config::get_startup_context,
             commands::config::load_config,
             commands::installer::download_installer,
+            commands::installer::verify_installer,
             commands::installer::run_installer,
             commands::installer::build_install_plan,
             commands::installer::install_agent,
@@ -87,7 +88,7 @@ async fn run_silent_async(
     config_source: Option<String>,
     log_path: String,
 ) -> i32 {
-    use services::{config_loader, downloader, install_planner, process_runner};
+    use services::{config_loader, downloader, install_planner, process_runner, verifier};
 
     let source = match config_source {
         Some(s) => s,
@@ -194,6 +195,29 @@ async fn run_silent_async(
             "INFO",
             &format!("Downloaded {} bytes in {} ms", r.file_size, r.duration_ms),
         ),
+        Err(e) => {
+            write_log(&log_path, "ERROR", &e.to_string());
+            return e.exit_code();
+        }
+    }
+
+    match verifier::verify_installer(&plan.save_path, config.installer.sha256.as_deref()).await {
+        Ok(v) => {
+            write_log(
+                &log_path,
+                "INFO",
+                &format!(
+                    "Verified installer: sha256={} signature={} signer={}",
+                    v.sha256,
+                    v.signature_status,
+                    v.signer.as_deref().unwrap_or("-")
+                ),
+            );
+            if !v.passed {
+                write_log(&log_path, "ERROR", "Installer SHA-256 does not match the configured value");
+                return 9;
+            }
+        }
         Err(e) => {
             write_log(&log_path, "ERROR", &e.to_string());
             return e.exit_code();
