@@ -139,7 +139,7 @@ export default function AppShell() {
           scrolled ? "bg-base-100/95 shadow-lg shadow-black/40 backdrop-blur-md" : "bg-transparent"
         }`}
       >
-        <Header />
+        <Header fullWidth={isMaximized} maximized={isMaximized} />
       </div>
 
       {phase === "loading" ? (

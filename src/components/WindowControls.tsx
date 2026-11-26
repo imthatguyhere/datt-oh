@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { closeWindow, minimizeWindow, toggleMaximizeWindow } from "../lib/tauri";
 
 /**
@@ -6,7 +7,7 @@ import { closeWindow, minimizeWindow, toggleMaximizeWindow } from "../lib/tauri"
 interface ControlProps {
   label: string;
   color: string;
-  glyph: string;
+  glyph: ReactNode;
   onClick: () => void;
 }
 
@@ -33,16 +34,45 @@ function Control({ label, color, glyph, onClick }: ControlProps) {
 }
 
 /**
- * Custom window controls (the native title bar is disabled). Left to right: maximize
- * (green), minimize (yellow), close (red).
+ * Down-pointing caret glyph for the minimize button.
  *
+ * @returns The caret icon.
+ */
+function CaretDown() {
+  return (
+    <svg
+      viewBox="0 0 10 10"
+      className="size-[6.75px] translate-y-px"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M1.5 3l3.5 3.5L8.5 3" />
+    </svg>
+  );
+}
+
+/**
+ * Custom window controls (the native title bar is disabled). Left to right: maximize/restore
+ * (green; hover shows "+" to maximize, "-" to restore), minimize (yellow; hover shows a down
+ * caret), close (red).
+ *
+ * @param props.maximized - Whether the window is currently maximized.
  * @returns The control group.
  */
-export default function WindowControls() {
+export default function WindowControls({ maximized }: { maximized: boolean }) {
   return (
     <div className="flex items-center gap-2">
-      <Control label="Maximize" color="bg-[#28c840]" glyph="+" onClick={toggleMaximizeWindow} />
-      <Control label="Minimize" color="bg-[#febc2e]" glyph="–" onClick={minimizeWindow} />
+      <Control
+        label={maximized ? "Restore" : "Maximize"}
+        color="bg-[#28c840]"
+        glyph={maximized ? "–" : "+"}
+        onClick={toggleMaximizeWindow}
+      />
+      <Control label="Minimize" color="bg-[#febc2e]" glyph={<CaretDown />} onClick={minimizeWindow} />
       <Control label="Close" color="bg-[#ff5f57]" glyph="×" onClick={closeWindow} />
     </div>
   );

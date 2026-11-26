@@ -7,9 +7,11 @@ import WindowControls from "./WindowControls";
  * window controls. It is a drag region so it can move the window. `AppShell` pins it in a
  * sticky bar so it stays visible while the page scrolls.
  *
+ * @param props.fullWidth - Drop the max-width cap (used while maximized) so the header spans the window.
+ * @param props.maximized - Whether the window is maximized (drives the maximize/restore control).
  * @returns The header element.
  */
-export default function Header() {
+export default function Header({ fullWidth, maximized }: { fullWidth: boolean; maximized: boolean }) {
   const { config, appVersion } = useInstaller();
   const title = config?.app?.title ?? "Datt-Oh!";
   const subtitle = config?.app?.subtitle;
@@ -17,7 +19,7 @@ export default function Header() {
   return (
     <header
       data-tauri-drag-region
-      className="mx-auto flex w-full max-w-6xl items-center justify-between"
+      className={`mx-auto flex w-full items-center justify-between ${fullWidth ? "" : "max-w-6xl"}`}
     >
       <div className="pointer-events-none flex items-center gap-3 select-none">
         <img
@@ -36,7 +38,7 @@ export default function Header() {
             v{appVersion}
           </span>
         )}
-        <WindowControls />
+        <WindowControls maximized={maximized} />
       </div>
     </header>
   );
